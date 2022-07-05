@@ -1,6 +1,7 @@
 import redis
 from os import environ as env
 
+
 def connect_to_redis():
     r = redis.Redis(
         host=env.get("REDIS_URL"),  # type: ignore
@@ -13,5 +14,5 @@ def connect_to_redis():
     except redis.exceptions.ConnectionError:
         print("[redis] Connection error")
         exit(1)
-    
+
     return r

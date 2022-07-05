@@ -24,12 +24,13 @@ is_rule_ok = True
 
 last_updated = datetime.now()
 
-super_dict : Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
+super_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
 
 stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 print("[green]Starting stream[/green]")
 print(stream.get_rules())
+
 
 def handle_tweet(tweet: Tweet):
 
@@ -38,7 +39,9 @@ def handle_tweet(tweet: Tweet):
         flush_and_reset()
         last_updated = datetime.now()
 
-    created_at = datetime.strptime(tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z")
+    created_at = datetime.strptime(
+        tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
+    )
 
     # If the created_at is less than one month ago, it will not be saved
     if created_at > datetime.now() - timedelta(days=30):
@@ -52,7 +55,7 @@ def handle_tweet(tweet: Tweet):
     if not all(ord(c) < 128 for c in tweet["includes"]["users"][0]["name"]):
         return
 
-    stored_object : StoredObject = {
+    stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
         "user": tweet["includes"]["users"][0]["name"],
         "profile_image_url": tweet["includes"]["users"][0]["profile_image_url"],
@@ -60,7 +63,7 @@ def handle_tweet(tweet: Tweet):
         "tweet_text": tweet["data"]["text"],
         "tweet_link": f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
         "tweet_created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        "meme_link": tweet["includes"]["media"][0]["url"],  
+        "meme_link": tweet["includes"]["media"][0]["url"],
     }
 
     print(tweet["matching_rules"][0]["tag"])
@@ -70,8 +73,9 @@ def handle_tweet(tweet: Tweet):
         print(stored_object)
         super_dict["tech_stream"].append(stored_object)
 
+
 def flush_and_reset():
-    
+
     # delete meme_Stream
     redis_client.delete("meme_stream")
     print("[green]Flushed memes database[/green]")
@@ -93,7 +97,12 @@ if not is_rule_ok:
 
 stream.search_stream(
     tweet_fields=["created_at"],
-    user_fields=["username", "name", "profile_image_url", "created_at"],  # To get the username
+    user_fields=[
+        "username",
+        "name",
+        "profile_image_url",
+        "created_at",
+    ],  # To get the username
     expansions=["attachments.media_keys", "author_id"],
     media_fields=["preview_image_url", "url"],  # To get the image
     return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key

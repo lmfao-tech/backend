@@ -39,7 +39,9 @@ Tweet = TypedDict(
                 "text": str,
             },
         ),
-        "includes": TypedDict("includes", {"media": List[Media], "users": List[UserObject]}),
+        "includes": TypedDict(
+            "includes", {"media": List[Media], "users": List[UserObject]}
+        ),
         "matching_rules": List[Rule],
     },
 )
@@ -48,12 +50,12 @@ StoredObject = TypedDict(
     "StoredObject",
     {
         "username": str,
-        "user":str,
+        "user": str,
         "profile_image_url": str,
         "tweet_id": str,
         "tweet_text": str,
-        "tweet_link":str,
+        "tweet_link": str,
         "tweet_created_at": str,
         "meme_link": str,
-    }
+    },
 )
