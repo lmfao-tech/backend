@@ -29,8 +29,6 @@ super_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": [
 stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 print("[green]Starting stream[/green]")
-print(stream.get_rules())
-
 
 def handle_tweet(tweet: Tweet):
 
@@ -66,11 +64,9 @@ def handle_tweet(tweet: Tweet):
         "meme_link": tweet["includes"]["media"][0]["url"],
     }
 
-    print(tweet["matching_rules"][0]["tag"])
     if tweet["matching_rules"][0]["tag"] == "Funny things":
         super_dict["meme_stream"].append(stored_object)
     elif tweet["matching_rules"][0]["id"] == "1544187580954349569":
-        print(stored_object)
         super_dict["tech_stream"].append(stored_object)
 
 
