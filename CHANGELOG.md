@@ -29,3 +29,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - `images` folder - no longer needed
 - JSON storage of memes - replaced by redis
+- Unnecessary print statements
