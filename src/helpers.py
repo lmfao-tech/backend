@@ -1,7 +1,7 @@
 from typing import List
 from pytwitter import StreamApi
 from pytwitter.models import Response
-
+from data import RULES
 
 def del_rules(*id: int) -> dict:
     """
@@ -23,3 +23,11 @@ def del_all(stream: StreamApi):
             stream.manage_rules(del_rules(*to_be_deleted))
 
         return to_be_deleted
+
+def reset_rules(stream: StreamApi):
+    """
+    Delete all rules and add the default ones
+    """
+    del_all(stream)
+    stream.manage_rules(rules=RULES)
+    print(stream.get_rules())
