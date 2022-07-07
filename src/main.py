@@ -99,8 +99,6 @@ def flush_and_reset():
     storage_dict["tech_stream"] = super_dict["tech_stream"]
     super_dict["tech_stream"] = []
 
-    print(storage_dict)
-
 stream.on_tweet = handle_tweet
 
 if not is_rule_ok:
@@ -114,7 +112,7 @@ async def get_memes():
 
 
 # Asynchrounosly start the server
-config = uvicorn.Config(app=app, host="0.0.0.0", port=8000)
+config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
 
 with server.run_in_thread():
