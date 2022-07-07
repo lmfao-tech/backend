@@ -55,6 +55,8 @@ def handle_tweet(tweet: Tweet):
         flush_and_reset()
         last_updated = datetime.now()
 
+    if not "includes" in tweet:
+        return
     created_at = datetime.strptime(
         tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
     )
