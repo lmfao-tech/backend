@@ -112,7 +112,7 @@ async def get_memes():
 
 
 # Asynchrounosly start the server
-config = uvicorn.Config(app=app)
+config = uvicorn.Config(app=app, host="0.0.0.0", port=8000)
 server = Server(config)
 
 with server.run_in_thread():
