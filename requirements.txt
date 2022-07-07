@@ -1,5 +1,7 @@
-redis
 black
 rich
 python-dotenv
 python-twitter-v2
+emoji
+fastapi
+uvicorn

@@ -2,7 +2,7 @@ from typing import List
 from pytwitter import StreamApi
 from pytwitter.models import Response
 from data import RULES
-
+from emoji import EMOJI_DATA
 
 def del_rules(*id: int) -> dict:
     """
@@ -34,3 +34,10 @@ def reset_rules(stream: StreamApi):
     del_all(stream)
     stream.manage_rules(rules=RULES)
     print(stream.get_rules())
+
+
+def is_valid_text(text:str):
+    for char in text:
+        if char and char.isdigit() and char not in EMOJI_DATA:
+            return False
+    return True

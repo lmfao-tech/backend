@@ -30,3 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `images` folder - no longer needed
 - JSON storage of memes - replaced by redis
 - Unnecessary print statements
+  
+## [0.0.3] - 2022-7-7
+### Added
+- Added FASTAPI routes for the memes
+- Uvicorn server threaded 
+- 
+
+### Removed
+- Removed the entire Redis server part - better to have FASTAPI routes so that we can later do more stuff with the API
+- The check for username is removed - but there's still a helper function in case we need it
