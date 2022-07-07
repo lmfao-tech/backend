@@ -38,7 +38,7 @@ class Server(uvicorn.Server):
             thread.join()
 
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = False 
+is_rule_ok = True  
 
 last_updated = datetime.now()
 
