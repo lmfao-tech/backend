@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Any
+import random
 from pytwitter import StreamApi
 from pytwitter.models import Response
 from data import RULES
@@ -41,3 +42,7 @@ def is_valid_text(text:str):
         if char and char.isdigit() and char not in EMOJI_DATA:
             return False
     return True
+
+def shuffle_list(list_: List[Any]):
+    random.shuffle(list_)
+    return list_

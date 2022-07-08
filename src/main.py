@@ -13,7 +13,7 @@ from pytwitter import StreamApi
 from rich.traceback import install
 from datetime import datetime, timedelta
 
-from helpers import is_valid_text, reset_rules
+from helpers import is_valid_text, reset_rules, shuffle_list
 from _types import Tweet, StoredObject
 
 load_dotenv()
@@ -38,7 +38,7 @@ class Server(uvicorn.Server):
             thread.join()
 
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = False  
+is_rule_ok = True  
 
 super_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
 
@@ -90,15 +90,15 @@ stream.on_tweet = handle_tweet
 if not is_rule_ok:
     reset_rules(stream)
 
-
 @app.get("/get_memes")
 async def get_memes(last:int = 0, max_tweets:int = 20):
     """Get the current memes stored in cache"""
     if last == 0:
-        return random.shuffle(super_dict["meme_stream"][:max_tweets])
+
+        return shuffle_list(super_dict["meme_stream"][:max_tweets])
     else:
         # Find the index of the tweetId in the list
-        return random.shuffle(super_dict["meme_stream"][last: last + max_tweets])
+        return shuffle_list(super_dict["meme_stream"][last: last + max_tweets])
 
 
 # Asynchrounosly start the server
