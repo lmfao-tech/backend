@@ -1,7 +1,7 @@
 RULES = {
     "add": [
         {
-            "value": """(meme OR memes OR humor OR funny) has:images -is:retweet lang:en -crypto -nft -politics""",
+            "value": """(meme OR memes OR humor) has:images -is:retweet lang:en -is:reply -crypto -nft -politics""",
             "tag": "Funny things",
         },
         {

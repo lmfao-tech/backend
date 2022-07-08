@@ -72,6 +72,7 @@ def handle_tweet(tweet: Tweet):
         print("[red]Not a photo, skipping[/red]")
         return
 
+    print(tweet)
 
     stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
