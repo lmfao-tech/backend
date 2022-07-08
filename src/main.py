@@ -38,7 +38,7 @@ class Server(uvicorn.Server):
             thread.join()
 
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = True  
+is_rule_ok = False  
 
 last_updated = datetime.now()
 
@@ -71,8 +71,6 @@ def handle_tweet(tweet: Tweet):
     if not tweet["includes"]["media"][0]["type"] == "photo":
         print("[red]Not a photo, skipping[/red]")
         return
-
-    print(tweet)
 
     stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
