@@ -95,10 +95,10 @@ if not is_rule_ok:
 async def get_memes(last:int = 0, max_tweets:int = 20):
     """Get the current memes stored in cache"""
     if last == 0:
-        return super_dict["meme_stream"][:max_tweets]
+        return random.shuffle(super_dict["meme_stream"][:max_tweets])
     else:
         # Find the index of the tweetId in the list
-        return super_dict["meme_stream"][last: last + max_tweets]
+        return random.shuffle(super_dict["meme_stream"][last: last + max_tweets])
 
 
 # Asynchrounosly start the server
