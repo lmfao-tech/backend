@@ -40,20 +40,15 @@ class Server(uvicorn.Server):
 # If set to false, it will delete all the rules and use the RULES from src\data.py
 is_rule_ok = False  
 
-last_updated = datetime.now()
-
 super_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
-storage_dict : Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
 
 stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 
 def handle_tweet(tweet: Tweet):
 
-    global last_updated
-    if datetime.now() - last_updated > timedelta(minutes=5):
-        flush_and_reset()
-        last_updated = datetime.now()
+    if len(super_dict["meme_stream"]) >= 500:
+        super_dict["meme_stream"].pop(0)
 
     if not "includes" in tweet:
         return
@@ -89,14 +84,6 @@ def handle_tweet(tweet: Tweet):
         super_dict["tech_stream"].append(stored_object)
 
 
-def flush_and_reset():
-
-    # delete meme_Stream
-    storage_dict["meme_stream"] = super_dict["meme_stream"]
-    super_dict["meme_stream"] = []
-
-    storage_dict["tech_stream"] = super_dict["tech_stream"]
-    super_dict["tech_stream"] = []
 
 stream.on_tweet = handle_tweet
 
@@ -107,7 +94,7 @@ if not is_rule_ok:
 @app.get("/get_memes")
 async def get_memes():
     """Get the current memes stored in cache"""
-    return storage_dict
+    return super_dict["meme_stream"]
 
 
 # Asynchrounosly start the server
