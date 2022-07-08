@@ -92,17 +92,13 @@ if not is_rule_ok:
 
 
 @app.get("/get_memes")
-async def get_memes(tweetId:int = 0, max_tweets:int = 20):
+async def get_memes(last:int = 0, max_tweets:int = 20):
     """Get the current memes stored in cache"""
-    if tweetId == 0:
+    if last == 0:
         return super_dict["meme_stream"][:max_tweets]
     else:
         # Find the index of the tweetId in the list
-        for index, tweet in enumerate(super_dict["meme_stream"]):
-            if str(tweet["tweet_id"]) == str(tweetId):
-                return super_dict["meme_stream"][index: ]
-
-    return super_dict["meme_stream"][:max_tweets]
+        return super_dict["meme_stream"][last: last + max_tweets]
 
 
 # Asynchrounosly start the server
