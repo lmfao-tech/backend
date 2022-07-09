@@ -121,9 +121,38 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
         media_fields=["preview_image_url", "url"],  # To get the image
     )
 
-    hot_memes_dict = memes
+    # Convert memes into StoredObject[] 
+    for index, meme in enumerate(memes["data"]):  # type: ignore
+        user_id = meme["author_id"]
+        media_key = meme["attachments"]["media_keys"][0]
+        meme_link = "https://millenia.tech/logo.png"
 
-    return memes
+        # Find media_key in memes["includes"]["media"]
+        for media in memes["includes"]["media"]:  # type: ignore
+            if media["media_key"] == media_key:
+                meme_link = media["url"]
+                break
+        
+        user = {}
+        for user_ in memes["includes"]["users"]:  # type: ignore
+            if user_["id"] == user_id:
+                user = user_
+                break
+
+        stored_obj :StoredObject = {
+            "tweet_text": meme["text"],
+            "tweet_created_at": meme["created_at"],
+            "profile_image_url": user["profile_image_url"],
+            "username": user["username"],
+            "user": user["name"],
+            "meme_link": meme_link,
+            "tweet_link": f"https://twitter.com/{user['username']}/status/{meme['id']}",
+            "tweet_id": meme["id"],
+        } 
+
+        hot_memes_dict.append(stored_obj)
+
+    return hot_memes_dict
 
 
 # Asynchrounosly start the server
