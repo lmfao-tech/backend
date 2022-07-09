@@ -101,13 +101,15 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
     if hot_last_updated_utc - datetime.utcnow() > timedelta(minutes=5):
         return shuffle_list(hot_memes_dict[:max_tweets])
 
-    since = (datetime.utcnow() - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    since = (datetime.utcnow() - timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     until = (datetime.utcnow() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     memes = api.search_tweets(
         query="meme has:images -is:retweet lang:en -is:reply -contest -instagram -blacksheep -anime -crypto -nft -coins -politics",
         return_json=True,
         max_results=100,
+        start_time=since,
+        end_time=until,
         tweet_fields=["created_at", "public_metrics"],
         user_fields=[
             "username",
@@ -125,7 +127,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
         media_key = meme["attachments"]["media_keys"][0]
         meme_link = "https://millenia.tech/logo.png"
 
-        if meme["public_metrics"]["like_count"] < 15:
+        if meme["public_metrics"]["like_count"] < 50:
             continue
 
         # Find media_key in memes["includes"]["media"]
