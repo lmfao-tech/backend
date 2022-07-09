@@ -107,7 +107,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
     memes = api.search_tweets(
         query="meme has:images -is:retweet lang:en -is:reply -contest -instagram -blacksheep -anime -crypto -nft -coins -politics",
         return_json=True,
-        max_results=100,
+        max_results=500,
         tweet_fields=["created_at", "public_metrics"],
         user_fields=[
             "username",
@@ -125,7 +125,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
         media_key = meme["attachments"]["media_keys"][0]
         meme_link = "https://millenia.tech/logo.png"
 
-        if meme["public_metrics"]["like_count"] < 50:
+        if meme["public_metrics"]["like_count"] < 25:
             continue
 
         # Find media_key in memes["includes"]["media"]
@@ -152,6 +152,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
         } 
 
         hot_memes_dict.append(stored_obj)
+        hot_last_updated_utc = datetime.utcnow()
 
     return hot_memes_dict
 
