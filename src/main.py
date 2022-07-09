@@ -107,10 +107,8 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
     memes = api.search_tweets(
         query="meme has:images -is:retweet lang:en -is:reply -contest -instagram -blacksheep -anime -crypto -nft -coins -politics",
         return_json=True,
-        start_time=since,
-        end_time=until,
         max_results=100,
-        tweet_fields=["created_at"],
+        tweet_fields=["created_at", "public_metrics"],
         user_fields=[
             "username",
             "name",
@@ -126,6 +124,9 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
         user_id = meme["author_id"]
         media_key = meme["attachments"]["media_keys"][0]
         meme_link = "https://millenia.tech/logo.png"
+
+        if meme["public_metrics"]["like_count"] < 50:
+            continue
 
         # Find media_key in memes["includes"]["media"]
         for media in memes["includes"]["media"]:  # type: ignore
