@@ -1,8 +1,5 @@
-import time
-import random
-import threading
-import contextlib
-from typing import List, Dict
+import typing
+from typing import List, Dict, Optional
 from os import environ as env
 
 import uvicorn
@@ -10,46 +7,30 @@ from fastapi import FastAPI
 from rich import print
 from dotenv import load_dotenv
 from pytwitter import StreamApi
+from pytwitter import Api
 from rich.traceback import install
 from datetime import datetime, timedelta
 
 from helpers import is_valid_text, reset_rules, shuffle_list
-from _types import Tweet, StoredObject
+from _types import Tweet, StoredObject, TweetSearchResult
+from server import Server
 
 load_dotenv()
 install()
 
 app = FastAPI()
 
-class Server(uvicorn.Server):
-    def install_signal_handlers(self):
-        pass
-
-    @contextlib.contextmanager
-    def run_in_thread(self):
-        thread = threading.Thread(target=self.run)
-        thread.start()
-        try:
-            while not self.started:
-                time.sleep(1e-3)
-            yield
-        finally:
-            self.should_exit = True
-            thread.join()
-
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = True  
+is_rule_ok = True
 
-super_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
+new_memes_dict: Dict[str, List[StoredObject]] = {"meme_stream": [], "tech_stream": []}
+hot_memes_dict = []
+hot_last_updated_utc = datetime.utcnow()
 
 stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
+api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
-
-def handle_tweet(tweet: Tweet):
-
-    if len(super_dict["meme_stream"]) >= 500:
-        super_dict["meme_stream"].pop(0)
-
+def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if not "includes" in tweet:
         return
     created_at = datetime.strptime(
@@ -78,11 +59,22 @@ def handle_tweet(tweet: Tweet):
         "meme_link": tweet["includes"]["media"][0]["url"],
     }
 
-    if tweet["matching_rules"][0]["tag"] == "Funny things":
-        super_dict["meme_stream"].append(stored_object)
-    else:
-        super_dict["tech_stream"].append(stored_object)
+    return stored_object
 
+def handle_tweet(tweet: Tweet):
+
+    if len(new_memes_dict["meme_stream"]) >= 500:
+        new_memes_dict["meme_stream"].pop(0)
+
+    stored_object = filter_tweet(tweet)
+
+    if stored_object is None:
+        return
+
+    if tweet["matching_rules"][0]["tag"] == "Funny things":
+        new_memes_dict["meme_stream"].append(stored_object)
+    else:
+        new_memes_dict["tech_stream"].append(stored_object)
 
 
 stream.on_tweet = handle_tweet
@@ -90,15 +82,48 @@ stream.on_tweet = handle_tweet
 if not is_rule_ok:
     reset_rules(stream)
 
+
 @app.get("/get_memes")
-async def get_memes(last:int = 0, max_tweets:int = 20):
+async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
     if last == 0:
-
-        return shuffle_list(super_dict["meme_stream"][:max_tweets])
+        return shuffle_list(new_memes_dict["meme_stream"][:max_tweets])
     else:
         # Find the index of the tweetId in the list
-        return shuffle_list(super_dict["meme_stream"][last: last + max_tweets])
+        return shuffle_list(new_memes_dict["meme_stream"][last : last + max_tweets])
+
+
+@app.get("/hot_memes")
+async def hot_memes(last: int = 0, max_tweets: int = 20):
+    """Get the hottest memes"""
+    global hot_last_updated_utc
+    global hot_memes_dict
+    if hot_last_updated_utc - datetime.utcnow() > timedelta(minutes=5):
+        return shuffle_list(hot_memes_dict[:max_tweets])
+
+    since = (datetime.utcnow() - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    until = (datetime.utcnow() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    memes = api.search_tweets(
+        query="meme has:images -is:retweet lang:en -is:reply -contest -instagram -blacksheep -anime -crypto -nft -coins -politics",
+        return_json=True,
+        start_time=since,
+        end_time=until,
+        max_results=100,
+        tweet_fields=["created_at"],
+        user_fields=[
+            "username",
+            "name",
+            "profile_image_url",
+            "created_at",
+        ],  # To get the username
+        expansions=["attachments.media_keys", "author_id"],
+        media_fields=["preview_image_url", "url"],  # To get the image
+    )
+
+    hot_memes_dict = memes
+
+    return memes
 
 
 # Asynchrounosly start the server

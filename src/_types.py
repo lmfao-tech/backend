@@ -28,6 +28,17 @@ UserObject = TypedDict(
     },
 )
 
+ReturnedTweetData = TypedDict(
+    "ReturnedTweetData",
+    {
+        "attachments": TypedDict("attachments", {"media_keys": List[str]}),
+        "id": str,
+        "text": str,
+        "author_id": str,
+        "created_at": str,
+    },
+)
+
 Tweet = TypedDict(
     "tweet",
     {
@@ -43,6 +54,17 @@ Tweet = TypedDict(
             "includes", {"media": List[Media], "users": List[UserObject]}
         ),
         "matching_rules": List[Rule],
+    },
+)
+
+TweetSearchResult = TypedDict(
+    "TweetSearchResult",
+    {
+        "data": List[ReturnedTweetData],
+        "includes": TypedDict(
+            "includes", {"media": List[Media], "users": List[UserObject]}
+        ),
+        "meta": TypedDict("meta", {"result_count": int, "next_token": str}),
     },
 )
 

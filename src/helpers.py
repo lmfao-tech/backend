@@ -5,6 +5,7 @@ from pytwitter.models import Response
 from data import RULES
 from emoji import EMOJI_DATA
 
+
 def del_rules(*id: int) -> dict:
     """
     Generate a dict to delete rules
@@ -37,11 +38,12 @@ def reset_rules(stream: StreamApi):
     print(stream.get_rules())
 
 
-def is_valid_text(text:str):
+def is_valid_text(text: str):
     for char in text:
         if char and char.isdigit() and char not in EMOJI_DATA:
             return False
     return True
+
 
 def shuffle_list(list_: List[Any]):
     random.shuffle(list_)
