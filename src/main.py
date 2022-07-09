@@ -98,7 +98,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
     """Get the hottest memes"""
     global hot_last_updated_utc
     global hot_memes_dict
-    if hot_last_updated_utc - datetime.utcnow() > timedelta(minutes=5):
+    if hot_last_updated_utc - datetime.utcnow() > timedelta(hours=1):
         return shuffle_list(hot_memes_dict[:max_tweets])
 
     since = (datetime.utcnow() - timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
