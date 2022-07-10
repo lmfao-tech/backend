@@ -1,3 +1,4 @@
+import random
 import typing
 from typing import List, Dict, Optional
 from os import environ as env
@@ -53,6 +54,7 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         "user": tweet["includes"]["users"][0]["name"],
         "profile_image_url": tweet["includes"]["users"][0]["profile_image_url"],
         "tweet_id": tweet["data"]["id"],
+        "user_id": tweet["includes"]["users"][0]["id"],
         "tweet_text": tweet["data"]["text"],
         "tweet_link": f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
         "tweet_created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -101,8 +103,8 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
     if hot_last_updated_utc - datetime.utcnow() > timedelta(hours=1):
         return shuffle_list(hot_memes_dict[:max_tweets])
 
-    since = (datetime.utcnow() - timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    until = (datetime.utcnow() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    since = (datetime.utcnow() - timedelta(hours=random.randint(3, 10))).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    until = (datetime.utcnow() - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     memes = api.search_tweets(
         query="meme has:images -is:retweet lang:en -is:reply -contest -instagram -blacksheep -anime -crypto -nft -coins -politics",
@@ -148,6 +150,7 @@ async def hot_memes(last: int = 0, max_tweets: int = 20):
             "profile_image_url": user["profile_image_url"],
             "username": user["username"],
             "user": user["name"],
+            "user_id": user_id,
             "meme_link": meme_link,
             "tweet_link": f"https://twitter.com/{user['username']}/status/{meme['id']}",
             "tweet_id": meme["id"],

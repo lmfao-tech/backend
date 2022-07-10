@@ -74,6 +74,7 @@ StoredObject = TypedDict(
         "username": str,
         "user": str,
         "profile_image_url": str,
+        "user_id": str,
         "tweet_id": str,
         "tweet_text": str,
         "tweet_link": str,
