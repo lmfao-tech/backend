@@ -26,7 +26,7 @@ install()
 app = FastAPI()
 
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = True
+is_rule_ok = False
 
 new_memes: List[StoredObject] = []
 
