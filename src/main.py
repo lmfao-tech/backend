@@ -87,18 +87,15 @@ stream.on_tweet = handle_tweet
 print(stream.get_rules())
 
 @app.get("/get_memes")
-async def get_memes(last: int = 0, max_tweets: int = 20, timestamp: int = 0):
+async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
     global new_memes
 
-    if not timestamp == 0:
-        new_memes = shuffle_list(new_memes, timestamp)
-
     if last == 0:
-        return new_memes[:max_tweets]
+        return shuffle_list(new_memes[:max_tweets])
     else:
         # Find the index of the tweetId in the list
-        return new_memes[last : last + max_tweets]
+        return shuffle_list(new_memes[last : last + max_tweets])
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
