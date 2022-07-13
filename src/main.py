@@ -73,7 +73,7 @@ if not is_rule_ok:
 
 def handle_tweet(tweet: Tweet):
     print("Handling tweet")
-    if len(new_memes) >= 500:
+    if len(new_memes) >= 100:
         new_memes.pop(0)
 
     stored_object = filter_tweet(tweet)
