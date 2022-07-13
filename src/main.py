@@ -91,10 +91,8 @@ async def get_memes(last: int = 0, max_tweets: int = 20, timestamp: int = 0):
     """Get the current memes stored in cache"""
     global new_memes
 
-    if timestamp == 0:
-        timestamp = int(datetime.utcnow().timestamp())
-
-    new_memes = shuffle_list(new_memes, timestamp)
+    if not timestamp == 0:
+        new_memes = shuffle_list(new_memes, timestamp)
 
     if last == 0:
         return new_memes[:max_tweets]
