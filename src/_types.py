@@ -80,5 +80,6 @@ StoredObject = TypedDict(
         "tweet_link": str,
         "tweet_created_at": str,
         "meme_link": str,
+        "source":str
     },
 )
