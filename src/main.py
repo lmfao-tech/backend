@@ -35,7 +35,6 @@ api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if not "includes" in tweet:
-        print("AAAAAAAAAa")
         return
     created_at = datetime.strptime(
         tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
@@ -81,13 +80,10 @@ class CustomStream(StreamApi):
 
         if stored_object is None:
             return
-        print(f"[green]New meme found![/green]")
         new_memes.append(stored_object)
 
-        print(new_memes)
 
     def on_data(self, raw_data, return_json=False):
-        print(raw_data)
         return super().on_data(raw_data, return_json)
 
     def on_closed(self, resp):
