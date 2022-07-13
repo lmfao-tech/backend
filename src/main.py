@@ -67,36 +67,22 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     return stored_object
 
 
-class CustomStream(StreamApi):
-    def __init__(self, bearer_token=None, consumer_key=None, consumer_secret=None, proxies=None, max_retries=3, timeout=None, chunk_size=1024):
-        super().__init__(bearer_token, consumer_key, consumer_secret, proxies, max_retries, timeout, chunk_size)
-
-
-    def handle_tweet(self,tweet: Tweet):
-        if len(new_memes) >= 500:
-            new_memes.pop(0)
-
-        stored_object = filter_tweet(tweet)
-
-        if stored_object is None:
-            return
-        new_memes.append(stored_object)
-
-
-    def on_data(self, raw_data, return_json=False):
-        return super().on_data(raw_data, return_json)
-
-    def on_closed(self, resp):
-        print("Stream closed")
-        return super().on_closed(resp)
-
-    def search_stream(self, *, backfill_minutes: Optional[int] = None, tweet_fields: Optional[Union[str, List, Tuple]] = None, expansions: Optional[Union[str, List, Tuple]] = None, user_fields: Optional[Union[str, List, Tuple]] = None, media_fields: Optional[Union[str, List, Tuple]] = None, place_fields: Optional[Union[str, List, Tuple]] = None, poll_fields: Optional[Union[str, List, Tuple]] = None, return_json: bool = False):
-        return super().search_stream(backfill_minutes = backfill_minutes, tweet_fields = tweet_fields, expansions =expansions, user_fields=user_fields, media_fields=media_fields,place_fields= place_fields,poll_fields= poll_fields,return_json= return_json)
-
-
-stream = CustomStream(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
+stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 if not is_rule_ok:
     reset_rules(stream)
+
+def handle_tweet(tweet: Tweet):
+    print("Handling tweet")
+    if len(new_memes) >= 500:
+        new_memes.pop(0)
+
+    stored_object = filter_tweet(tweet)
+
+    if stored_object is None:
+        return
+    new_memes.append(stored_object)
+
+stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
 
