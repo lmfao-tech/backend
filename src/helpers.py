@@ -46,5 +46,5 @@ def is_valid_text(text: str):
 
 
 def shuffle_list(list_: List[Any]):
-    random.Random(timestamp).shuffle(list_)
+    random.shuffle(list_)
     return list_
