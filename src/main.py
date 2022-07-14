@@ -50,6 +50,9 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if not tweet["includes"]["media"][0]["type"] == "photo":
         print("[red]Not a photo, skipping[/red]")
         return
+    if "$" in tweet["data"]["text"]:
+        print("[red]Contains a dollar sign, skipping[/red]")
+        return
 
     stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
