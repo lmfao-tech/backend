@@ -54,6 +54,11 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         print("[red]Contains a dollar sign, skipping[/red]")
         return
 
+    source = "Recently uploaded"
+
+    if tweet["matching_rules"][0]["tag"] == "meme_creators":
+        source = "From a popular meme creator"
+
     stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
         "user": tweet["includes"]["users"][0]["name"],
@@ -64,7 +69,7 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         "tweet_link": f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
         "tweet_created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
         "meme_link": tweet["includes"]["media"][0]["url"],
-        "source": "Recently uploaded",
+        "source": source,
     }
 
     return stored_object
