@@ -53,6 +53,9 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if "$" in tweet["data"]["text"]:
         print("[red]Contains a dollar sign, skipping[/red]")
         return
+    if tweet["data"]["text"].startswith("RT "):
+        print("[red]Is a retweet, skipping[/red]")
+        return
 
     source = "Recently uploaded"
 
