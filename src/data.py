@@ -5,7 +5,7 @@ RULES = {
             "tag": "new_memes",
         },
         {
-            "value": """(@weirdrealitymp4 OR @IntrovertProbss OR @memesiwish OR @OldMemeArchive OR @ManMilk2 OR @dankmemesreddit OR @SpongeBobMemesZ OR @WholesomeMeme OR @memes OR @memeadikt)""",
+            "value": """(from:weirdrealitymp4 OR from:IntrovertProbss OR from:memesiwish OR from:OldMemeArchive OR from:ManMilk2 OR from:dankmemesreddit OR from:SpongeBobMemesZ OR from:WholesomeMeme OR from:memes OR from:memeadikt) has:images -is:retweet lang:en -is:reply""",
             "tag": "meme_creators",
         }
     ]
