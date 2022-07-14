@@ -56,6 +56,9 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if tweet["data"]["text"].startswith("RT "):
         print("[red]Is a retweet, skipping[/red]")
         return
+    if "worth reading" in tweet["data"]["text"].lower() or "love story" in tweet["data"]["text"].lower():
+        print("[red]Is an ad, skipping[/red]")
+        return
 
     source = "Recently uploaded"
 
