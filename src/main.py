@@ -32,7 +32,7 @@ new_memes: List[StoredObject] = []
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
-BLOCKED_KEYWORDS = ["worth reading", "freecomic", "manhua", "love story"]
+BLOCKED_KEYWORDS = ["worth reading", "freecomic", "manhua", "love story", "BLcomics", "webtoon"]
 BLOCKED_USERS = ["futurememesbot"]
 
 def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
