@@ -48,3 +48,6 @@ def is_valid_text(text: str):
 def shuffle_list(list_: List[Any]):
     random.shuffle(list_)
     return list_
+
+def reverse_list(list_: List[Any]):
+    return list_[::-1]
