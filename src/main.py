@@ -32,6 +32,8 @@ new_memes: List[StoredObject] = []
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
+BLOCKED_KEYWORDS = ["worth reading", "freecomic", "manhua", "love story"]
+BLOCKED_USERS = ["futurememesbot"]
 
 def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if not "includes" in tweet:
@@ -56,8 +58,13 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
     if tweet["data"]["text"].startswith("RT "):
         print("[red]Is a retweet, skipping[/red]")
         return
-    if "worth reading" in tweet["data"]["text"].lower() or "love story" in tweet["data"]["text"].lower():
+
+    if any(keyword in tweet["data"]["text"].lower() for keyword in BLOCKED_KEYWORDS):
         print("[red]Is an ad, skipping[/red]")
+        return
+
+    if tweet["includes"]["users"][0]["username"].lower() in BLOCKED_USERS:
+        print("[red]Is a blocked user, skipping[/red]")
         return
 
     source = "Recently uploaded"
