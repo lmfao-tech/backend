@@ -199,7 +199,7 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
     global community_memes_
     global community_memes_last_updated
 
-    if community_memes_last_updated > datetime.utcnow() - timedelta(hours=1):
+    if community_memes_last_updated > datetime.utcnow() - timedelta(minutes=15):
         results = api.search_tweets(
             "#LMFAOtech has:images -is:retweet lang:en -is:reply",
             tweet_fields=["created_at"],
