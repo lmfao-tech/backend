@@ -20,9 +20,13 @@ install()
 app = FastAPI()
 
 # If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = False
+is_rule_ok = True
 
 new_memes: List[StoredObject] = []
+top_memes_: List[StoredObject] = []
+top_memes_last_updated = datetime.utcnow()
+community_memes_: List[StoredObject] = []
+community_memes_last_updated = datetime.utcnow()
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
@@ -125,6 +129,140 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
         # Find the index of the tweetId in the list
         return shuffle_list(new_memes[last : last + max_tweets])
 
+
+@app.get("/top_memes")
+async def top_memes():
+    """Get the top memes"""
+
+    global top_memes_last_updated
+    global top_memes_
+
+    if top_memes_last_updated > datetime.utcnow() - timedelta(hours=1):
+        results = api.search_tweets(
+            "(from:weirdrealitymp4 OR from:IntrovertProbss OR from:memesiwish OR from:OldMemeArchive OR from:ManMilk2 OR from:dankmemesreddit OR from:SpongeBobMemesZ OR from:WholesomeMeme OR from:memes OR from:memeadikt) has:images -is:retweet lang:en -is:reply",
+            tweet_fields=["created_at"],
+            user_fields=[
+                "username",
+                "name",
+                "profile_image_url",
+                "created_at",
+            ],  # To get the username
+            expansions=["attachments.media_keys", "author_id"],
+            media_fields=["preview_image_url", "url"],  # To get the image
+            return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key
+            max_results=100,
+        )
+        if not isinstance(results, dict):
+            return []
+        for tweet in results["data"]:
+            user_id = tweet["author_id"]
+            media_id = tweet["attachments"]["media_keys"][0]
+
+            user = next(
+                (
+                    user
+                    for user in results["includes"]["users"]
+                    if user["id"] == user_id
+                ),
+                None,
+            )
+
+            attachment = next(
+                (
+                    attachment
+                    for attachment in results["includes"]["media"]
+                    if attachment["media_key"] == media_id
+                ),
+                None,
+            )
+
+            if not user or not attachment:
+                continue
+
+            new_obj: StoredObject = {
+                "tweet_id": str(tweet["id"]),
+                "tweet_text": tweet["text"],
+                "user_id": str(tweet["author_id"]),
+                "tweet_created_at": tweet["created_at"],
+                "user": user["name"],
+                "username": user["username"],
+                "profile_image_url": user["profile_image_url"],
+                "meme_link": attachment["url"],
+                "tweet_link": f"https://twitter.com/{user['username']}/status/{tweet['id']}",
+                "source": "popular",
+            }
+
+            top_memes_.append(new_obj)
+
+        top_memes_last_updated = datetime.utcnow()
+
+    return shuffle_list(top_memes_)
+
+@app.get("/community_memes")
+async def community_memes():
+    global community_memes_
+    global community_memes_last_updated
+
+    if community_memes_last_updated > datetime.utcnow() - timedelta(hours=1):
+        results = api.search_tweets(
+            "#LMFAOtech has:images -is:retweet lang:en -is:reply",
+            tweet_fields=["created_at"],
+            user_fields=[
+                "username",
+                "name",
+                "profile_image_url",
+                "created_at",
+            ],  # To get the username
+            expansions=["attachments.media_keys", "author_id"],
+            media_fields=["preview_image_url", "url"],  # To get the image
+            return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key
+            max_results=100,
+        )
+        if not isinstance(results, dict):
+            return []
+        for tweet in results["data"]:
+            user_id = tweet["author_id"]
+            media_id = tweet["attachments"]["media_keys"][0]
+
+            user = next(
+                (
+                    user
+                    for user in results["includes"]["users"]
+                    if user["id"] == user_id
+                ),
+                None,
+            )
+
+            attachment = next(
+                (
+                    attachment
+                    for attachment in results["includes"]["media"]
+                    if attachment["media_key"] == media_id
+                ),
+                None,
+            )
+
+            if not user or not attachment:
+                continue
+
+            new_obj: StoredObject = {
+                "tweet_id": str(tweet["id"]),
+                "tweet_text": tweet["text"],
+                "user_id": str(tweet["author_id"]),
+                "tweet_created_at": tweet["created_at"],
+                "user": user["name"],
+                "username": user["username"],
+                "profile_image_url": user["profile_image_url"],
+                "meme_link": attachment["url"],
+                "tweet_link": f"https://twitter.com/{user['username']}/status/{tweet['id']}",
+                "source": "popular",
+            }
+
+            community_memes_.append(new_obj)
+
+        community_memes_last_updated = datetime.utcnow()
+
+    return shuffle_list(community_memes_)
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
