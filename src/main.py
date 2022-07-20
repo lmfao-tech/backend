@@ -123,15 +123,11 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
     global new_memes
 
-    if last == 0:
-        return shuffle_list(new_memes[:max_tweets])
-    else:
-        # Find the index of the tweetId in the list
-        return shuffle_list(new_memes[last : last + max_tweets])
+    return shuffle_list(new_memes[last : last + max_tweets])
 
 
 @app.get("/top_memes")
-async def top_memes():
+async def top_memes(last: int = 0, max_tweets: int = 20):
     """Get the top memes"""
 
     global top_memes_last_updated
@@ -196,10 +192,10 @@ async def top_memes():
 
         top_memes_last_updated = datetime.utcnow()
 
-    return shuffle_list(top_memes_)
+    return shuffle_list(top_memes_[last:last+max_tweets])
 
 @app.get("/community_memes")
-async def community_memes():
+async def community_memes(last: int = 0, max_tweets: int = 20):
     global community_memes_
     global community_memes_last_updated
 
@@ -262,7 +258,7 @@ async def community_memes():
 
         community_memes_last_updated = datetime.utcnow()
 
-    return shuffle_list(community_memes_)
+    return shuffle_list(community_memes_[last:last+max_tweets])
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
