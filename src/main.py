@@ -1,8 +1,4 @@
-import random
-import time
-import typing
-import logging
-from typing import List, Dict, Optional, Tuple, Union
+from typing import List, Optional
 from os import environ as env
 
 import uvicorn
@@ -14,11 +10,9 @@ from pytwitter import Api
 from rich.traceback import install
 from datetime import datetime, timedelta
 
-from helpers import is_valid_text, reset_rules, reverse_list, shuffle_list
-from _types import Tweet, StoredObject, TweetSearchResult
+from helpers import reset_rules, shuffle_list
+from _types import Tweet, StoredObject
 from server import Server
-
-logging.basicConfig(filename="log.txt")
 
 load_dotenv()
 install()
@@ -32,11 +26,20 @@ new_memes: List[StoredObject] = []
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
-BLOCKED_KEYWORDS = ["worth reading", "freecomic", "manhua", "love story", "BLcomics", "webtoon", "link"]
+BLOCKED_KEYWORDS = [
+    "worth reading",
+    "freecomic",
+    "manhua",
+    "love story",
+    "BLcomics",
+    "webtoon",
+    "link",
+]
 BLOCKED_USERS = ["futurememesbot"]
 
 
 def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
+
     if not "includes" in tweet:
         return
     created_at = datetime.strptime(
@@ -93,6 +96,7 @@ stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 if not is_rule_ok:
     reset_rules(stream)
 
+
 def handle_tweet(tweet: Tweet):
     print("Handling tweet")
     if len(new_memes) >= 100:
@@ -104,20 +108,23 @@ def handle_tweet(tweet: Tweet):
         return
     new_memes.append(stored_object)
 
+
 stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
+
 
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
     global new_memes
-    
+
     if last == 0:
         return shuffle_list(new_memes[:max_tweets])
     else:
         # Find the index of the tweetId in the list
         return shuffle_list(new_memes[last : last + max_tweets])
+
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
