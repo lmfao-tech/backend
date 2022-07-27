@@ -39,6 +39,9 @@ ReturnedTweetData = TypedDict(
     },
 )
 
+urlEntity = TypedDict("url", {"start": int, "end": int, "url": str, "expanded_url": str})
+
+
 Tweet = TypedDict(
     "tweet",
     {
@@ -48,6 +51,7 @@ Tweet = TypedDict(
                 "attachments": TypedDict("attachments", {"media_keys": List[str]}),
                 "id": str,
                 "text": str,
+                "entities": TypedDict("entities", {"urls": List[urlEntity]}),
             },
         ),
         "includes": TypedDict(

@@ -40,6 +40,7 @@ BLOCKED_KEYWORDS = [
     "link",
 ]
 BLOCKED_USERS = ["futurememesbot"]
+BLOCKED_URLS = ["m.bilibilicomics", "bit.ly", "discord.gg"]
 
 
 def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
@@ -75,10 +76,10 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         print("[red]Is a blocked user, skipping[/red]")
         return
 
-    source = "Recently uploaded"
-
-    if tweet["matching_rules"][0]["tag"] == "meme_creators":
-        source = "From a popular meme creator"
+    if "urls" in tweet["data"]["entities"]:
+        if any(url in tweet["data"]["entities"]["urls"][0]["expanded_url"] for url in BLOCKED_URLS):
+            print("[red]Is a blocked url, skipping[/red]")
+            return
 
     stored_object: StoredObject = {
         "username": tweet["includes"]["users"][0]["username"],
@@ -90,7 +91,7 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         "tweet_link": f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
         "tweet_created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
         "meme_link": tweet["includes"]["media"][0]["url"],
-        "source": source,
+        "source": "Recently uploaded",
     }
 
     return stored_object
@@ -102,7 +103,6 @@ if not is_rule_ok:
 
 
 def handle_tweet(tweet: Tweet):
-    print("Handling tweet")
     if len(new_memes) >= 100:
         new_memes.pop(0)
 
@@ -135,7 +135,7 @@ async def top_memes(last: int = 0, max_tweets: int = 20):
 
     if top_memes_last_updated > datetime.utcnow() - timedelta(hours=1):
         results = api.search_tweets(
-            "(from:weirdrealitymp4 OR from:IntrovertProbss OR from:memesiwish OR from:OldMemeArchive OR from:ManMilk2 OR from:dankmemesreddit OR from:SpongeBobMemesZ OR from:WholesomeMeme OR from:memes OR from:memeadikt) has:images -is:retweet lang:en -is:reply",
+            "(from:weirdrealitymp4 OR from:IntrovertProbss OR from:OldMemeArchive OR from:ManMilk2 OR from:dankmemesreddit OR from:SpongeBobMemesZ OR from:WholesomeMeme OR from:memes OR from:memeadikt) has:images -is:retweet lang:en -is:reply",
             tweet_fields=["created_at"],
             user_fields=[
                 "username",
@@ -192,7 +192,8 @@ async def top_memes(last: int = 0, max_tweets: int = 20):
 
         top_memes_last_updated = datetime.utcnow()
 
-    return shuffle_list(top_memes_[last:last+max_tweets])
+    return shuffle_list(top_memes_[last : last + max_tweets])
+
 
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
@@ -213,6 +214,9 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
             media_fields=["preview_image_url", "url"],  # To get the image
             return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key
             max_results=100,
+            start_time=datetime.strftime(
+                datetime.utcnow() - timedelta(weeks=50), "%Y-%m-%d"
+            ),
         )
         if not isinstance(results, dict):
             return []
@@ -258,16 +262,16 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
 
         community_memes_last_updated = datetime.utcnow()
 
-    return shuffle_list(community_memes_[last:last+max_tweets])
+    return shuffle_list(community_memes_[last : last + max_tweets])
+
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
 
 
 with server.run_in_thread():
-    print("[green]Starting stream[/green]")
     stream.search_stream(
-        tweet_fields=["created_at"],
+        tweet_fields=["created_at", "entities"],
         user_fields=[
             "username",
             "name",
