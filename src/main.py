@@ -2,7 +2,8 @@ from typing import List, Optional
 from os import environ as env
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from rich import print
 from dotenv import load_dotenv
 from pytwitter import StreamApi
@@ -117,6 +118,24 @@ stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
 
+@app.get("/unauthorized", status_code=401)
+def unauthorized():
+    # return 401 status
+    return {"message": "Unauthorized"}
+
+# Middleware for authorization
+@app.middleware("http")
+async def authenticate(request: Request, call_next):
+
+    if request.url.path == "/unauthorized":
+        # Don't do anything for this route
+        return await call_next(request)
+    
+    if request.headers.get("Authorization") == env.get("AUTH_PASSWORD"):
+        return await call_next(request)
+    else:
+        # Redirect to unauthorized page
+        return RedirectResponse("/unauthorized")
 
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
@@ -125,6 +144,16 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
 
     return shuffle_list(new_memes[last : last + max_tweets])
 
+@app.get("/remove_meme")
+async def remove_meme(tweet_id: str):
+    """Remove a meme from the cache"""
+    global new_memes
+
+    for meme in new_memes:
+        if meme["tweet_id"] == tweet_id:
+            new_memes.remove(meme)
+            return
+    return "Meme not found"
 
 @app.get("/top_memes")
 async def top_memes(last: int = 0, max_tweets: int = 20):
