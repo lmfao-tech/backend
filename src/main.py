@@ -27,6 +27,7 @@ new_memes: List[StoredObject] = []
 top_memes_: List[StoredObject] = []
 top_memes_last_updated = datetime.utcnow()
 community_memes_: List[StoredObject] = []
+removed_memes: List[str] = []
 community_memes_last_updated = datetime.utcnow()
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
@@ -117,6 +118,24 @@ def handle_tweet(tweet: Tweet):
 stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
+
+@app.get("/remove")
+async def remove_a_post(id: str):
+    for i,d in enumerate(new_memes):
+        if d["tweet_id"] == id: new_memes.pop(i)
+    for i,d in enumerate(top_memes):
+        if d["tweet_id"] == id: top_memes.pop(i)
+    for i,d in enumerate(community_memes):
+        if d["tweet_id"] == id: community_memes.pop(i)
+
+    already_exists = False
+    for e in removed_memes:
+        if e == id:
+            already_exists = True
+
+    if not already_exists:
+        removed_memes.append(id)
+    pass
 
 @app.get("/unauthorized", status_code=401)
 def unauthorized():
