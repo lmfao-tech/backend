@@ -135,7 +135,10 @@ async def remove_a_post(id: str):
 
     if not already_exists:
         removed_memes.append(id)
-    pass
+    
+    return {
+        "message": "done"
+    }
 
 @app.get("/unauthorized", status_code=401)
 def unauthorized():
