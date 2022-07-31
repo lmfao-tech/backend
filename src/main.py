@@ -27,7 +27,7 @@ new_memes: List[StoredObject] = []
 top_memes_: List[StoredObject] = []
 top_memes_last_updated = datetime.utcnow()
 community_memes_: List[StoredObject] = []
-removed_memes: List[StoredObject] = []
+removed_memes_list: List[StoredObject] = []
 community_memes_last_updated = datetime.utcnow()
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
@@ -79,7 +79,10 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         return
 
     if "urls" in tweet["data"]["entities"]:
-        if any(url in tweet["data"]["entities"]["urls"][0]["expanded_url"] for url in BLOCKED_URLS):
+        if any(
+            url in tweet["data"]["entities"]["urls"][0]["expanded_url"]
+            for url in BLOCKED_URLS
+        ):
             print("[red]Is a blocked url, skipping[/red]")
             return
 
@@ -93,7 +96,7 @@ def filter_tweet(tweet: Tweet) -> Optional[StoredObject]:
         "tweet_link": f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
         "tweet_created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
         "meme_link": tweet["includes"]["media"][0]["url"],
-        "source": "Recently uploaded",
+        "source": "Recently uploaded"
     }
 
     return stored_object
@@ -119,64 +122,64 @@ stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
 
+
 @app.get("/revive_meme")
 async def revive_post(id: str):
-    
-    global new_memes, top_memes_, community_memes_, removed_memes
 
-    for i ,d in enumerate(removed_memes):
+    global new_memes, top_memes_, community_memes_, removed_memes_list
+
+    for i, d in enumerate(removed_memes_list):
         if d["tweet_id"] == id:
-            removed_memes.pop(i)
+            removed_memes_list.pop(i)
             new_memes.append(d)
-    
-    return {
-        "message": "done"
-    }
+
+    return {"message": "done"}
+
 
 @app.get("/removed_memes")
-async def removed_memes():
+async def removed_memes(last: int = 0, max_tweets: int = 20):
+    """Get the removed memes stored in cache"""
+    global removed_memes_list
 
-    global removed_memes
+    return removed_memes_list[last : last + max_tweets]
 
-    return {
-        "data": removed_memes
-    }
 
 @app.get("/remove_meme")
-async def remove_a_post(id: str):
+async def remove_a_post(id: str, by: str):
 
-    global new_memes, top_memes_, community_memes_, removed_memes
+    global new_memes, top_memes_, community_memes_, removed_memes_list
     da_meme = None
-        
-    for i,d in enumerate(new_memes):
-        if d["tweet_id"] == id: 
+
+    for i, d in enumerate(new_memes):
+        if d["tweet_id"] == id:
             da_meme = d
             new_memes.pop(i)
-    for i,d in enumerate(top_memes_):
-        if d["tweet_id"] == id: 
+    for i, d in enumerate(top_memes_):
+        if d["tweet_id"] == id:
             da_meme = d
             top_memes.pop(i)
-    for i,d in enumerate(community_memes_):
-        if d["tweet_id"] == id: 
+    for i, d in enumerate(community_memes_):
+        if d["tweet_id"] == id:
             da_meme = d
             community_memes_.pop(i)
 
     already_exists = False
-    for e in removed_memes:
+    for e in removed_memes_list:
         if e["tweet_id"] == id:
             already_exists = True
 
     if not already_exists and da_meme:
-        removed_memes.append(da_meme)
-    
-    return {
-        "message": "done"
-    }
+        da_meme["removed_by"] = by
+        removed_memes_list.append(da_meme)
+
+    return {"message": "done"}
+
 
 @app.get("/unauthorized", status_code=401)
 def unauthorized():
     # return 401 status
     return {"message": "Unauthorized"}
+
 
 # Middleware for authorization
 @app.middleware("http")
@@ -185,12 +188,13 @@ async def authenticate(request: Request, call_next):
     if request.url.path == "/unauthorized":
         # Don't do anything for this route
         return await call_next(request)
-    
+
     if request.headers.get("Authorization") == env.get("AUTH_PASSWORD"):
         return await call_next(request)
     else:
         # Redirect to unauthorized page
         return RedirectResponse("/unauthorized")
+
 
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
@@ -198,6 +202,7 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
     global new_memes
 
     return shuffle_list(new_memes[last : last + max_tweets])
+
 
 @app.get("/top_memes")
 async def top_memes(last: int = 0, max_tweets: int = 20):

@@ -1,4 +1,5 @@
-from typing import Dict, TypedDict, List
+from typing import Dict, Optional, TypedDict, List
+from typing_extensions import NotRequired
 
 Media = TypedDict(
     "Media",
@@ -84,6 +85,7 @@ StoredObject = TypedDict(
         "tweet_link": str,
         "tweet_created_at": str,
         "meme_link": str,
-        "source":str
+        "source":str,
+        "removed_by"  : NotRequired[str],
     },
 )
