@@ -108,7 +108,7 @@ if not is_rule_ok:
 
 
 def handle_tweet(tweet: Tweet):
-    if len(new_memes) >= 100:
+    if len(new_memes) >= 500:
         new_memes.pop(0)
 
     stored_object = filter_tweet(tweet)
@@ -121,58 +121,6 @@ def handle_tweet(tweet: Tweet):
 stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
-
-
-@app.get("/revive_meme")
-async def revive_post(id: str):
-
-    global new_memes, top_memes_, community_memes_, removed_memes_list
-
-    for i, d in enumerate(removed_memes_list):
-        if d["tweet_id"] == id:
-            removed_memes_list.pop(i)
-            new_memes.append(d)
-
-    return {"message": "done"}
-
-
-@app.get("/removed_memes")
-async def removed_memes(last: int = 0, max_tweets: int = 20):
-    """Get the removed memes stored in cache"""
-    global removed_memes_list
-
-    return removed_memes_list[last : last + max_tweets]
-
-
-@app.get("/remove_meme")
-async def remove_a_post(id: str, by: str):
-
-    global new_memes, top_memes_, community_memes_, removed_memes_list
-    da_meme = None
-
-    for i, d in enumerate(new_memes):
-        if d["tweet_id"] == id:
-            da_meme = d
-            new_memes.pop(i)
-    for i, d in enumerate(top_memes_):
-        if d["tweet_id"] == id:
-            da_meme = d
-            top_memes.pop(i)
-    for i, d in enumerate(community_memes_):
-        if d["tweet_id"] == id:
-            da_meme = d
-            community_memes_.pop(i)
-
-    already_exists = False
-    for e in removed_memes_list:
-        if e["tweet_id"] == id:
-            already_exists = True
-
-    if not already_exists and da_meme:
-        da_meme["removed_by"] = by
-        removed_memes_list.append(da_meme)
-
-    return {"message": "done"}
 
 
 @app.get("/unauthorized", status_code=401)
@@ -342,6 +290,58 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
 
     return shuffle_list(community_memes_[last : last + max_tweets])
 
+
+#* MODERATION ENDPOINTS
+@app.get("/revive_meme")
+async def revive_post(id: str):
+
+    global new_memes, top_memes_, community_memes_, removed_memes_list
+
+    for i, d in enumerate(removed_memes_list):
+        if d["tweet_id"] == id:
+            removed_memes_list.pop(i)
+            new_memes.append(d)
+
+    return {"message": "done"}
+
+
+@app.get("/removed_memes")
+async def removed_memes(last: int = 0, max_tweets: int = 20):
+    """Get the removed memes stored in cache"""
+    global removed_memes_list
+
+    return removed_memes_list[last : last + max_tweets]
+
+
+@app.get("/remove_meme")
+async def remove_a_post(id: str, by: str):
+
+    global new_memes, top_memes_, community_memes_, removed_memes_list
+    da_meme = None
+
+    for i, d in enumerate(new_memes):
+        if d["tweet_id"] == id:
+            da_meme = d
+            new_memes.pop(i)
+    for i, d in enumerate(top_memes_):
+        if d["tweet_id"] == id:
+            da_meme = d
+            top_memes.pop(i)
+    for i, d in enumerate(community_memes_):
+        if d["tweet_id"] == id:
+            da_meme = d
+            community_memes_.pop(i)
+
+    already_exists = False
+    for e in removed_memes_list:
+        if e["tweet_id"] == id:
+            already_exists = True
+
+    if not already_exists and da_meme:
+        da_meme["removed_by"] = by
+        removed_memes_list.append(da_meme)
+
+    return {"message": "done"}
 
 config = uvicorn.Config(app=app, host="0.0.0.0")
 server = Server(config)
