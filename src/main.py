@@ -27,7 +27,7 @@ new_memes: List[StoredObject] = []
 top_memes_: List[StoredObject] = []
 top_memes_last_updated = datetime.utcnow()
 community_memes_: List[StoredObject] = []
-removed_memes: List[str] = []
+removed_memes: List[StoredObject] = []
 community_memes_last_updated = datetime.utcnow()
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
@@ -119,22 +119,55 @@ stream.on_tweet = handle_tweet
 
 print(stream.get_rules())
 
-@app.get("/remove")
+@app.get("/revive_meme")
+async def revive_post(id: str):
+    
+    global new_memes, top_memes_, community_memes_, removed_memes
+
+    for i ,d in enumerate(removed_memes):
+        if d["tweet_id"] == id:
+            removed_memes.pop(i)
+            new_memes.append(d)
+    
+    return {
+        "message": "done"
+    }
+
+@app.get("/removed_memes")
+async def removed_memes():
+
+    global removed_memes
+
+    return {
+        "data": removed_memes
+    }
+
+@app.get("/remove_meme")
 async def remove_a_post(id: str):
+
+    global new_memes, top_memes_, community_memes_, removed_memes
+    da_meme = None
+        
     for i,d in enumerate(new_memes):
-        if d["tweet_id"] == id: new_memes.pop(i)
-    for i,d in enumerate(top_memes):
-        if d["tweet_id"] == id: top_memes.pop(i)
-    for i,d in enumerate(community_memes):
-        if d["tweet_id"] == id: community_memes.pop(i)
+        if d["tweet_id"] == id: 
+            da_meme = d
+            new_memes.pop(i)
+    for i,d in enumerate(top_memes_):
+        if d["tweet_id"] == id: 
+            da_meme = d
+            top_memes.pop(i)
+    for i,d in enumerate(community_memes_):
+        if d["tweet_id"] == id: 
+            da_meme = d
+            community_memes_.pop(i)
 
     already_exists = False
     for e in removed_memes:
-        if e == id:
+        if e["tweet_id"] == id:
             already_exists = True
 
-    if not already_exists:
-        removed_memes.append(id)
+    if not already_exists and da_meme:
+        removed_memes.append(da_meme)
     
     return {
         "message": "done"
@@ -165,17 +198,6 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
     global new_memes
 
     return shuffle_list(new_memes[last : last + max_tweets])
-
-@app.get("/remove_meme")
-async def remove_meme(tweet_id: str):
-    """Remove a meme from the cache"""
-    global new_memes
-
-    for meme in new_memes:
-        if meme["tweet_id"] == tweet_id:
-            new_memes.remove(meme)
-            return
-    return "Meme not found"
 
 @app.get("/top_memes")
 async def top_memes(last: int = 0, max_tweets: int = 20):
