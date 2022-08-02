@@ -5,3 +5,4 @@ python-twitter-v2
 emoji
 fastapi
 uvicorn
+redis-om
