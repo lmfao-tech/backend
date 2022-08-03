@@ -14,6 +14,7 @@ from pydantic import AnyHttpUrl
 
 redis = get_redis_connection(url=env.get("REDIS_OM_URL"))
 
+
 class Meme(EmbeddedJsonModel):
     username: str
     user: str
@@ -42,14 +43,16 @@ class MemeCache(JsonModel):
         database = redis
         global_key_prefix = "MemeCache:"
 
+
 class Blocked(JsonModel):
     keywords: List[str] = []
-    users : List[str] = []
-    urls : List[str] = []
+    users: List[str] = []
+    urls: List[str] = []
 
     class Meta:
         database = redis
         global_key_prefix = "blocked:"
+
 
 def get_cache(cache_key: Optional[str] = None) -> JsonModel:
 
@@ -70,7 +73,8 @@ def get_cache(cache_key: Optional[str] = None) -> JsonModel:
         cache_key = str(cache_key).split(":")[-1].strip("'")
     memes = MemeCache.get(pk=cache_key)
 
-    return memes 
+    return memes
+
 
 def get_blocked(cache_key: Optional[str] = None) -> JsonModel:
 

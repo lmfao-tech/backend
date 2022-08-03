@@ -100,14 +100,14 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
 def handle_tweet(tweet: Tweet):
     if len(cache.memes) >= 300:
-        cache.memes.pop(-1)
+        cache.memes.pop(0)
 
     stored_object = filter_tweet(tweet)
 
     if stored_object is None:
         return
 
-    cache.memes.insert(0, stored_object)
+    cache.memes.append(stored_object)
 
 
 stream.on_tweet = handle_tweet
@@ -225,50 +225,22 @@ if not dev:
 
 
 @app.get("/get_memes")
-async def get_memes(last_id: int = 0, max_tweets: int = 20):
+async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
 
-    if last_id == 0:
-        return cache.memes[:max_tweets]
-
-    top_n = max_tweets // 4
-
-    # Get the meme with the last_id
-    for meme in cache.memes:
-        if meme.tweet_id == str(last_id):
-            memes = cache.memes[
-                cache.memes.index(meme)
-                + 1 : cache.memes.index(meme)
-                + 1
-                + max_tweets
-                - top_n
-            ]
-
-            top_index = random.Random(last_id).randint(0, len(cache.top_memes) - top_n)
-            top_memes = cache.top_memes[top_index : top_index + top_n]
-
-            return shuffle_list(memes + top_memes)
-
-    return cache.memes[:max_tweets]
+    if last == 0:
+        return {"memes": cache.memes[:max_tweets]}
+    else:
+        return {"memes": cache.memes[last : last + max_tweets]}
 
 
 @app.get("/community_memes")
-async def community_memes(last_id: int = 0, max_tweets: int = 20):
+async def community_memes(last: int = 0, max_tweets: int = 20):
 
-    if last_id == 0:
-        return cache.community_memes[:max_tweets]
-
-    # Get the meme with the last_id
-    for meme in cache.community_memes:
-        if meme.tweet_id == str(last_id):
-            return cache.community_memes[
-                cache.community_memes.index(meme)
-                + 1 : cache.community_memes.index(meme)
-                + 1
-                + max_tweets
-            ]
-
-    return cache.community_memes[:max_tweets]
+    if last == 0:
+        return {"memes": cache.community_memes[:max_tweets]}
+    else:
+        return {"memes": cache.community_memes[last : last + max_tweets]}
 
 
 # * MODERATION ENDPOINTS
@@ -285,21 +257,12 @@ async def revive_post(id: str):
 
 
 @app.get("/removed_memes")
-async def removed_memes(last_id: int = 0, max_tweets: int = 20):
-    if last_id == 0:
-        return cache.removed_memes[:max_tweets]
+async def removed_memes(last: int = 0, max_tweets: int = 20):
 
-    # Get the meme with the last_id
-    for meme in cache.removed_memes:
-        if meme.tweet_id == str(last_id):
-            return cache.removed_memes[
-                cache.removed_memes.index(meme)
-                + 1 : cache.removed_memes.index(meme)
-                + 1
-                + max_tweets
-            ]
-
-    return cache.removed_memes[:max_tweets]
+    if last == 0:
+        return {"memes": cache.removed_memes[:max_tweets]}
+    else:
+        return {"memes": cache.removed_memes[last : last + max_tweets]}
 
 
 @app.get("/remove_meme")
@@ -328,7 +291,7 @@ async def remove_a_post(id: str, by: str):
     if not already_exists and da_meme:
         da_meme.removed_by = by
         da_meme.expire(num_seconds=60 * 60 * 12)
-        cache.removed_memes.append(da_meme)
+        cache.removed_memes.insert(0, da_meme)
 
     return {"message": "done"}
 
