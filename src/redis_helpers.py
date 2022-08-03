@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from os import environ as env
+from rich import print
 
 from redis_om import (
     HashModel,
@@ -41,7 +42,16 @@ class MemeCache(JsonModel):
         database = redis
         global_key_prefix = "MemeCache:"
 
-def get_cache(cache_key: Optional[str] = None) -> MemeCache:
+class Blocked(JsonModel):
+    keywords: List[str] = []
+    users : List[str] = []
+    urls : List[str] = []
+
+    class Meta:
+        database = redis
+        global_key_prefix = "blocked:"
+
+def get_cache(cache_key: Optional[str] = None) -> JsonModel:
 
     for key in redis.scan_iter("MemeCache:*"):
         cache_key = key
@@ -58,6 +68,28 @@ def get_cache(cache_key: Optional[str] = None) -> MemeCache:
 
     if ":" in str(cache_key):
         cache_key = str(cache_key).split(":")[-1].strip("'")
-    memes = MemeCache(pk=cache_key)
+    memes = MemeCache.get(pk=cache_key)
 
-    return memes
+    return memes 
+
+def get_blocked(cache_key: Optional[str] = None) -> JsonModel:
+
+    for key in redis.scan_iter("blocked:*"):
+        cache_key = key
+        break
+
+    if cache_key is None:
+        blocked = Blocked()
+        blocked.save()
+        cache_key = blocked.pk
+
+        print("[green]Created new Blocked server key[/green]")
+
+    assert cache_key is not None
+
+    if ":" in str(cache_key):
+        cache_key = str(cache_key).split(":")[-1].strip("'")
+    print(cache_key)
+    blocked = Blocked.get(pk=cache_key)
+
+    return blocked

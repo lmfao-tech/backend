@@ -1,3 +1,4 @@
+import random
 from typing import Optional
 from os import environ as env
 
@@ -17,38 +18,24 @@ from server import Server
 
 load_dotenv()
 
-from redis_helpers import Meme, get_cache
+from redis_helpers import Blocked, Meme, MemeCache, get_blocked, get_cache
 
 install()
-
 app = FastAPI()
-
-dev = env.get("ENV") == "development"
-
-# If set to false, it will delete all the rules and use the RULES from src\data.py
-is_rule_ok = True
-
+dev = (
+    env.get("ENV") == "development"
+)  #! Development environment turns off authorization for quick testing
+is_rule_ok = True  # If set to false, it will delete all the rules and use the RULES from src\data.py
 stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
+
 if not is_rule_ok or not dev:
     reset_rules(stream)
 
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
-BLOCKED_KEYWORDS = [
-    "worth reading",
-    "freecomic",
-    "manhua",
-    "love story",
-    "BLcomics",
-    "webtoon",
-    "link",
-]
-BLOCKED_USERS = ["futurememesbot", "jam_onlineradio"]
-BLOCKED_URLS = ["m.bilibilicomics", "bit.ly", "discord.gg"]
-
-
-cache = get_cache()
+cache: MemeCache = get_cache()  # type: ignore
+blocked: Blocked = get_blocked()  # type: ignore
 
 
 def filter_tweet(tweet: Tweet) -> Optional[Meme]:
@@ -59,7 +46,6 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
         tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
     )
 
-    # If the created_at is less than one month ago, it will not be saved
     if created_at > datetime.now() - timedelta(days=10):
         print("[red]User acc created less than 10 days ago, skipping[/red]")
         return
@@ -73,18 +59,18 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
         print("[red]Is a retweet, skipping[/red]")
         return
 
-    if any(keyword in tweet["data"]["text"].lower() for keyword in BLOCKED_KEYWORDS):
+    if any(keyword in tweet["data"]["text"].lower() for keyword in blocked.keywords):
         print("[red]Is an ad, skipping[/red]")
         return
 
-    if tweet["includes"]["users"][0]["username"].lower() in BLOCKED_USERS:
+    if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users):  # type: ignore
         print("[red]Is a blocked user, skipping[/red]")
         return
 
     if "urls" in tweet["data"]["entities"]:
         if any(
             url in tweet["data"]["entities"]["urls"][0]["expanded_url"]
-            for url in BLOCKED_URLS
+            for url in blocked.urls  # type: ignore
         ):
             print("[red]Is a blocked url, skipping[/red]")
             return
@@ -106,7 +92,7 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
 
 def handle_tweet(tweet: Tweet):
-    if len(cache.memes) >= 500:
+    if len(cache.memes) >= 300:
         cache.memes.pop(-1)
 
     stored_object = filter_tweet(tweet)
@@ -179,10 +165,12 @@ def update_top_memes():
                 tweet["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
             ),
             meme_link=attachment["url"],
-            source="Top 100",
+            source="Top Creators",
         )
 
         cache.top_memes.insert(0, new_object)
+
+        cache.top_memes = cache.top_memes[:300]
 
     cache.save()
 
@@ -191,7 +179,10 @@ def update_top_memes():
 @repeat_every(seconds=60 * 3)
 def save_cache():
     """Saves the current cache to the server every 3 minutes"""
+    print("[blue]Saving Cache[/blue]")
     cache.save()
+    print(f"{len(cache.memes)} memes, {len(cache.top_memes)} top memes saved.")
+    blocked.save()
 
 
 @app.get("/unauthorized", status_code=401)
@@ -226,12 +217,24 @@ async def get_memes(last_id: int = 0, max_tweets: int = 20):
 
     if last_id == 0:
         return cache.memes[:max_tweets]
+
+    top_n = max_tweets // 4
+
     # Get the meme with the last_id
     for meme in cache.memes:
         if meme.tweet_id == str(last_id):
-            return cache.memes[
-                cache.memes.index(meme) + 1 : cache.memes.index(meme) + 1 + max_tweets
+            memes = cache.memes[
+                cache.memes.index(meme)
+                + 1 : cache.memes.index(meme)
+                + 1
+                + max_tweets
+                - top_n
             ]
+
+            top_index = random.Random(last_id).randint(0, len(cache.top_memes) - top_n)
+            top_memes = cache.top_memes[top_index : top_index + top_n]
+
+            return shuffle_list(memes + top_memes)
 
     return cache.memes[:max_tweets]
 
