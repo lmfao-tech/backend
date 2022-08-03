@@ -105,7 +105,8 @@ def handle_tweet(tweet: Tweet):
 
 stream.on_tweet = handle_tweet
 
-print(stream.get_rules())
+if not dev:
+    print(stream.get_rules())
 
 # * AUTH AND TASKS
 
@@ -183,6 +184,11 @@ def save_cache():
     cache.save()
     print(f"{len(cache.memes)} memes, {len(cache.top_memes)} top memes saved.")
     blocked.save()
+
+
+@app.get("/hello")
+def hello():
+    return {"message": "Hello World!"}
 
 
 @app.get("/unauthorized", status_code=401)
@@ -314,7 +320,7 @@ async def community_memes(last_id: int = 0, max_tweets: int = 20):
 config = uvicorn.Config(app=app, host="0.0.0.0")
 if dev:
     print("[green]Running in development mode[/green]")
-    config = uvicorn.Config(app=app, reload=True, debug=True)
+    config = uvicorn.Config(app="main:app", reload=True, debug=True)
 server = Server(config)
 
 
