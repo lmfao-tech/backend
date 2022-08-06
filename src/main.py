@@ -187,6 +187,8 @@ def update_top_memes():
 @repeat_every(seconds=60 * 3)
 def save_cache():
     """Saves the current cache to the server every 3 minutes"""
+    t : MemeCache = get_cache()
+    cache.community_memes = t.community_memes
     print("[blue]Saving Cache[/blue]")
     cache.save()
     print(f"{len(cache.memes)} memes, {len(cache.top_memes)} top memes saved.")
