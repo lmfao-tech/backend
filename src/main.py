@@ -237,10 +237,7 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
 
-    if random.randint(1, 10) >= 7:
-        t = get_cache()
-    else:
-        t = cache
+    t = get_cache()
 
     if last == 0:
         return {"memes": t.community_memes[:max_tweets]}
