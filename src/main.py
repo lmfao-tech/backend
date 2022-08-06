@@ -1,10 +1,11 @@
 import random
-from typing import Optional
+from typing import List, Optional
 from os import environ as env
 
 import uvicorn
 from rich import print
 from pytwitter import Api
+from functools import lru_cache
 from dotenv import load_dotenv
 from pytwitter import StreamApi
 from rich.traceback import install
@@ -184,10 +185,10 @@ def update_top_memes():
 
 
 @app.on_event("startup")
-@repeat_every(seconds=60 * 3)
+@repeat_every(seconds=60 * 2)
 def save_cache():
-    """Saves the current cache to the server every 3 minutes"""
-    t : MemeCache = get_cache()
+    """Saves the current cache to the server every 2 minutes"""
+    t: MemeCache = get_cache()  # type: ignore
     cache.community_memes = t.community_memes
     print("[blue]Saving Cache[/blue]")
     cache.save()
@@ -230,21 +231,30 @@ if not dev:
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
 
-    if last == 0:
-        return {"memes": cache.memes[:max_tweets]}
-    else:
-        return {"memes": cache.memes[last : last + max_tweets]}
+    return {"memes": cache.memes[last : last + max_tweets]}
 
 
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
 
-    t = get_cache()
+    return {"memes": cache.community_memes[last : last + max_tweets]}
 
-    if last == 0:
-        return {"memes": t.community_memes[:max_tweets]}
-    else:
-        return {"memes": t.community_memes[last : last + max_tweets]}
+
+@lru_cache
+def get_profile_memes(username: str) -> List[Meme]:
+    return [
+        meme
+        for meme in cache.community_memes
+        if meme.username.lower() == username.lower()
+    ]
+
+
+@app.get("/profile_memes")
+async def profile(username: str, last: int = 0, max_tweets: int = 20):
+    """Get the profile of a user"""
+    memes_ = get_profile_memes(username)
+
+    return {"memes": memes_[last : last + max_tweets]}
 
 
 # * MODERATION ENDPOINTS
