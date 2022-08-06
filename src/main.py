@@ -237,10 +237,11 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
 
+    t = get_cache()
     if last == 0:
-        return {"memes": cache.community_memes[:max_tweets]}
+        return {"memes": t.community_memes[:max_tweets]}
     else:
-        return {"memes": cache.community_memes[last : last + max_tweets]}
+        return {"memes": t.community_memes[last : last + max_tweets]}
 
 
 # * MODERATION ENDPOINTS
