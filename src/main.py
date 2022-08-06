@@ -295,6 +295,7 @@ async def remove_a_post(id: str, by: str):
         da_meme.expire(num_seconds=60 * 60 * 12)
         cache.removed_memes.insert(0, da_meme)
 
+    cache.save()
     return {"message": "done"}
 
 
