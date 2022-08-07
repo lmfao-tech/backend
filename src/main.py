@@ -240,7 +240,6 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
     return {"memes": cache.community_memes[last : last + max_tweets]}
 
 
-@lru_cache
 def get_profile_memes(username: str) -> List[Meme]:
     return [
         meme
@@ -254,7 +253,7 @@ async def profile(username: str, last: int = 0, max_tweets: int = 20):
     """Get the profile of a user"""
     memes_ = get_profile_memes(username)
 
-    return {"memes": memes_[last : last + max_tweets]}
+    return {"memes": memes_[last : last + max_tweets], "meta": {"total": len(memes_)}}
 
 
 # * MODERATION ENDPOINTS
