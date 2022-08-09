@@ -19,7 +19,7 @@ from helpers import reset_rules, shuffle_list, repeat_every
 
 load_dotenv()
 
-from redis_helpers import Blocked, Meme, MemeCache, get_blocked, get_cache
+from redis_helpers import Blocked, Meme, MemeCache, Templates, get_blocked, get_cache, get_templates  # type: ignore
 
 install()
 app = FastAPI()
@@ -37,7 +37,6 @@ api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 cache: MemeCache = get_cache()  # type: ignore
 blocked: Blocked = get_blocked()  # type: ignore
-
 
 def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
@@ -255,6 +254,10 @@ async def profile(username: str, last: int = 0, max_tweets: int = 20):
 
     return {"memes": memes_[last : last + max_tweets], "meta": {"total": len(memes_)}}
 
+@app.get("/templates")
+async def get_templates():
+    templates:Templates = get_templates() # type: ignore
+    return {"templates": templates.templates}
 
 # * MODERATION ENDPOINTS
 # TODO: Redis cache for the moderation endpoints
