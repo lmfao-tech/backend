@@ -312,13 +312,13 @@ async def remove_a_post(id: str, by: str):
 
 
 @app.get("/ban_user")
-async def ban_user(id: str):
+async def ban_user(user: str):
     "Ban a user from the automated stream"
-    blocked.users.append(id)
+    blocked.users.append(user)
     blocked.save()
 
     for meme in cache.memes:
-        if meme.user_id == id:
+        if meme.username == user:
             cache.memes.remove(meme)
     
     cache.save()
