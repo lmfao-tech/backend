@@ -263,6 +263,7 @@ async def revive_post(id: str):
 
     for i, d in enumerate(cache.removed_memes):
         if d.tweet_id == id:
+            d.removed_by = None
             cache.removed_memes.pop(i)
             cache.memes.insert(0, d)
 
@@ -307,6 +308,21 @@ async def remove_a_post(id: str, by: str):
         cache.removed_memes.insert(0, da_meme)
 
     cache.save()
+    return {"message": "done"}
+
+
+@app.get("/ban_user")
+async def ban_user(id: str):
+    "Ban a user from the automated stream"
+    blocked.users.append(id)
+    blocked.save()
+
+    for meme in cache.memes:
+        if meme.user_id == id:
+            cache.memes.remove(meme)
+    
+    cache.save()
+
     return {"message": "done"}
 
 
