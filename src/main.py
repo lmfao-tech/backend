@@ -255,7 +255,7 @@ async def profile(username: str, last: int = 0, max_tweets: int = 20):
     return {"memes": memes_[last : last + max_tweets], "meta": {"total": len(memes_)}}
 
 @app.get("/templates")
-async def get_templates():
+async def get_templates_route():
     templates:Templates = get_templates() # type: ignore
     return {"templates": templates.templates}
 
