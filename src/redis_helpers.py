@@ -44,6 +44,14 @@ class MemeCache(JsonModel):
         global_key_prefix = "MemeCache:"
 
 
+class Templates(JsonModel):
+    templates: List[str] = []
+
+    class Meta:
+        database = redis
+        global_key_prefix = "templates:"
+
+
 class Blocked(JsonModel):
     keywords: List[str] = []
     users: List[str] = []
@@ -74,6 +82,28 @@ def get_cache(cache_key: Optional[str] = None) -> JsonModel:
     memes = MemeCache.get(pk=cache_key)
 
     return memes
+
+
+def get_templates(cache_key: Optional[str] = None) -> JsonModel:
+
+    for key in redis.scan_iter("templates:*"):
+        cache_key = key
+        break
+
+    if cache_key is None:
+        templates = Templates(templates=[])
+        templates.save()
+        cache_key = templates.pk
+
+        print("[green]Created new server key[/green]")
+
+    assert cache_key is not None
+
+    if ":" in str(cache_key):
+        cache_key = str(cache_key).split(":")[-1].strip("'")
+    templates = Templates.get(pk=cache_key)
+
+    return templates
 
 
 def get_blocked(cache_key: Optional[str] = None) -> JsonModel:
