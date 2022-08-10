@@ -201,7 +201,7 @@ def hello():
 
 
 @app.get("/meme")
-async def get_a_meme(id: string):
+async def get_a_meme(id: str):
     
     meme = None
 
