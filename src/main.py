@@ -380,18 +380,18 @@ async def supermod(
         print("Adding word")
         if (word) and not word == "undefined":
             blocked.keywords.append(word)
-        if url and not word == "undefined":
+        if url and not url == "undefined":
             blocked.urls.append(url)
-        if users and not word == "undefined":
+        if users and not users == "undefined":
             blocked.users.append(users)
         blocked.save()
         
     elif action == "remove":
         if word and not word == "undefined":
             blocked.keywords.remove(word)
-        if url and not word == "undefined":
+        if url and not url == "undefined":
             blocked.urls.remove(url)
-        if users and not word == "undefined":
+        if users and not users == "undefined":
             blocked.users.remove(users)
         blocked.save()
             
