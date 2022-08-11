@@ -215,33 +215,6 @@ def hello():
     return {"message": "Hello World!"}
 
 
-@app.get("/meme")
-async def get_a_meme(id: str):
-    
-    meme = None
-
-    for m in cache.memes:
-        if m.tweet_id == id:
-            meme = m
-            break
-
-    if m is None:
-        for m in cache.community_memes:
-            if m.tweet_id == id:
-                meme = m
-                break
-    
-    if m is None:
-        for m in cache.top_memes:
-            if m.tweet_id == id:
-                meme = m
-                break
-
-    return {
-        "post": meme
-    }
-
-
 @app.get("/unauthorized", status_code=401)
 def unauthorized():
     # return 401 status
