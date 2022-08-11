@@ -258,7 +258,7 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
 async def profile(username: str, last: int = 0, max_tweets: int = 20):
     """Get the profile of a user"""
     # TODO: Use redis search to find all memes by the user
-    memes = [meme for meme in cache.memes if meme.username == username]
+    memes = [meme for meme in cache.community_memes if meme.username == username]
 
     return {"memes": memes[last : last + max_tweets], "meta": {"total": len(memes)}}
 
