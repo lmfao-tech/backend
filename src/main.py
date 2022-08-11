@@ -365,10 +365,10 @@ async def unban_user(user: str):
 
 @app.get("/supermod")
 async def supermod(
-    word: Optional[List[str]] = None,
-    url: Optional[List[str]] = None,
-    users: Optional[List[str]] = None,
-    action: Optional[Literal["add", "remove"]] = None,
+    word: Optional[str] = None,
+    url: Optional[str] = None,
+    users: Optional[str] = None,
+    action: Literal["add", "remove"] = "add",
     password: str = "",
 ):
     """Supermod endpoint. Returns all blocked users, URLS, keywords. Number of posts removed by mods, number of cached,removed, community memes"""
@@ -377,26 +377,24 @@ async def supermod(
         return {"message": "Invalid password"}
 
     if action == "add":
-        if word:
-            for w in word:
-                blocked.keywords.append(w)
-        if url:
-            for u in url:
-                blocked.urls.append(u)
-        if users:
-            for u in users:
-                blocked.users.append(u)
+        print("Adding word")
+        if (word) and not word == "undefined":
+            blocked.keywords.append(word)
+        if url and not word == "undefined":
+            blocked.urls.append(url)
+        if users and not word == "undefined":
+            blocked.users.append(users)
+        blocked.save()
+        
     elif action == "remove":
-        if word:
-            for w in word:
-                blocked.keywords.remove(w)
-        if url:
-            for u in url:
-                blocked.urls.remove(u)
-        if users:
-            for u in users:
-                blocked.users.remove(u)
-    blocked.save()
+        if word and not word == "undefined":
+            blocked.keywords.remove(word)
+        if url and not word == "undefined":
+            blocked.urls.remove(url)
+        if users and not word == "undefined":
+            blocked.users.remove(users)
+        blocked.save()
+            
 
     return {
         "blocked": blocked.users,
