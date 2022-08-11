@@ -270,8 +270,13 @@ async def revive_post(id: str):
 @app.get("/removed_memes")
 async def removed_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    removed_memes_ = Meme.find(Meme.removed_by != None).all()
-    print(removed_memes_)
+    n : List[Meme] = get_all_memes("main") # type: ignore
+    b : List[Meme]= get_all_memes("community") # type: ignore
+
+    all_memes = n + b
+
+    removed_memes_ = [meme for meme in all_memes if meme.removed_by is not None and meme.removed_by != ""]
+
     if last == 0:
         return {"memes": removed_memes_[:max_tweets]}
     else:
@@ -340,14 +345,14 @@ async def supermod(
             blocked.users.remove(users)
         blocked.save()
 
-    total = {
-        "cached": str(
-            len(Meme.find((Meme.page == "main") & (Meme.removed_by == None)).all())
-        ),
-        # "removed": str(len(Meme.find(Meme.removed_by != None).all())),
-        "community": str(len(Meme.find(Meme.page == "community").all())),
-    }
-    print(total)
+    # total = {
+    #     "cached": str(
+    #         len(Meme.find((Meme.page == "main") & (Meme.removed_by == None)).all())
+    #     ),
+    #     # "removed": str(len(Meme.find(Meme.removed_by != None).all())),
+    #     "community": str(len(Meme.find(Meme.page == "community").all())),
+    # }
+    # print(total)
 
     return {
         "blocked": blocked.users,
