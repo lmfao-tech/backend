@@ -1,5 +1,6 @@
+from optparse import Option
 import random
-from typing import List, Optional
+from typing import Dict, List, Literal, Optional, TypedDict
 from os import environ as env
 
 import uvicorn
@@ -19,7 +20,8 @@ from helpers import reset_rules, shuffle_list, repeat_every
 
 load_dotenv()
 
-from redis_helpers import Blocked, Meme, MemeCache, Templates, get_blocked, get_cache, get_templates  # type: ignore
+from redis_om import Migrator
+from redis_helpers import redis, Blocked, Meme, MemeCache, Templates, get_blocked, get_cache, get_templates  # type: ignore
 
 install()
 app = FastAPI()
@@ -35,8 +37,12 @@ if not is_rule_ok or not dev:
 
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
+# Migrator().run()
 cache: MemeCache = get_cache()  # type: ignore
 blocked: Blocked = get_blocked()  # type: ignore
+
+mods: Dict[str, int] = {}
+
 
 def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
@@ -181,6 +187,15 @@ def update_top_memes():
         cache.top_memes = cache.top_memes[:300]
 
     cache.save()
+    blocked.save()
+
+    for meme in cache.removed_memes:
+        if not meme.removed_by:
+            continue
+        if meme.removed_by in mods.keys():
+            mods[meme.removed_by] += 1
+        else:
+            mods[meme.removed_by] = 1
 
 
 @app.on_event("startup")
@@ -239,25 +254,35 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
     return {"memes": cache.community_memes[last : last + max_tweets]}
 
 
-def get_profile_memes(username: str) -> List[Meme]:
-    return [
-        meme
-        for meme in cache.community_memes
-        if meme.username.lower() == username.lower()
-    ]
-
-
 @app.get("/profile_memes")
 async def profile(username: str, last: int = 0, max_tweets: int = 20):
     """Get the profile of a user"""
-    memes_ = get_profile_memes(username)
+    # TODO: Use redis search to find all memes by the user
+    memes = [meme for meme in cache.memes if meme.username == username]
 
-    return {"memes": memes_[last : last + max_tweets], "meta": {"total": len(memes_)}}
+    return {"memes": memes[last : last + max_tweets], "meta": {"total": len(memes)}}
+
+
+@app.get("/get_meme")
+async def get_meme(tweet_id: int):
+    """Get a specific meme"""
+
+    # TODO: use redis search to find the meme
+    meme = next(
+        (meme for meme in cache.community_memes if meme.tweet_id == str(tweet_id)), None
+    )
+
+    if meme is None:
+        return {"message": "Meme not found"}
+
+    return meme
+
 
 @app.get("/templates")
 async def get_templates_route():
-    templates:Templates = get_templates() # type: ignore
+    templates: Templates = get_templates()  # type: ignore
     return {"templates": templates.templates}
+
 
 # * MODERATION ENDPOINTS
 # TODO: Redis cache for the moderation endpoints
@@ -316,17 +341,74 @@ async def remove_a_post(id: str, by: str):
 
 @app.get("/ban_user")
 async def ban_user(user: str):
-    "Ban a user from the automated stream"
+    """Ban a user from the automated stream"""
     blocked.users.append(user)
     blocked.save()
 
     for meme in cache.memes:
         if meme.username == user:
             cache.memes.remove(meme)
-    
+
     cache.save()
 
     return {"message": "done"}
+
+
+@app.get("/unban_user")
+async def unban_user(user: str):
+    """Unban a user from the automated stream"""
+    blocked.users.remove(user)
+    blocked.save()
+
+    return {"message": "done"}
+
+
+@app.get("/supermod")
+async def supermod(
+    word: Optional[List[str]] = None,
+    url: Optional[List[str]] = None,
+    users: Optional[List[str]] = None,
+    action: Optional[Literal["add", "remove"]] = None,
+    password: str = "",
+):
+    """Supermod endpoint. Returns all blocked users, URLS, keywords. Number of posts removed by mods, number of cached,removed, community memes"""
+
+    if password != env.get("SUPERMOD_PASSWORD"):
+        return {"message": "Invalid password"}
+
+    if action == "add":
+        if word:
+            for w in word:
+                blocked.keywords.append(w)
+        if url:
+            for u in url:
+                blocked.urls.append(u)
+        if users:
+            for u in users:
+                blocked.users.append(u)
+    elif action == "remove":
+        if word:
+            for w in word:
+                blocked.keywords.remove(w)
+        if url:
+            for u in url:
+                blocked.urls.remove(u)
+        if users:
+            for u in users:
+                blocked.users.remove(u)
+    blocked.save()
+
+    return {
+        "blocked": blocked.users,
+        "urls": blocked.urls,
+        "keywords": blocked.keywords,
+        "total": {
+            "cached": len(cache.memes),
+            "removed": len(cache.removed_memes),
+            "community": len(cache.community_memes),
+        },
+        "mods": mods,
+    }
 
 
 # * UPLOAD ENDPOINTS

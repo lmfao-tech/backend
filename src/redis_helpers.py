@@ -16,7 +16,7 @@ redis = get_redis_connection(url=env.get("REDIS_OM_URL"))
 
 
 class Meme(EmbeddedJsonModel):
-    username: str
+    username:str = Field(index=True)
     user: str
     profile_image_url: AnyHttpUrl
     user_id: str
@@ -24,19 +24,20 @@ class Meme(EmbeddedJsonModel):
     tweet_text: str
     tweet_link: AnyHttpUrl
     tweet_created_at: datetime
-    meme_link: AnyHttpUrl
+    meme_link: Optional[AnyHttpUrl]
     source: str
     removed_by: Optional[str] = None
 
     class Meta:
         database = redis
         global_key_prefix = "meme:"
+        index_keys = ["tweet_id"]
 
 
 class MemeCache(JsonModel):
     memes: List[Meme] = []
     top_memes: List[Meme] = []
-    community_memes: List[Meme] = []
+    community_memes: List[Meme] = Field(index=True, default=[])
     removed_memes: List[Meme] = []
 
     class Meta:
@@ -65,6 +66,8 @@ class Blocked(JsonModel):
 def get_cache(cache_key: Optional[str] = None) -> JsonModel:
 
     for key in redis.scan_iter("MemeCache:*"):
+        if key.endswith(b"hash"):
+            continue
         cache_key = key
         break
 
@@ -76,7 +79,6 @@ def get_cache(cache_key: Optional[str] = None) -> JsonModel:
         print("[green]Created new server key[/green]")
 
     assert cache_key is not None
-
     if ":" in str(cache_key):
         cache_key = str(cache_key).split(":")[-1].strip("'")
     memes = MemeCache.get(pk=cache_key)
@@ -109,6 +111,8 @@ def get_templates(cache_key: Optional[str] = None) -> JsonModel:
 def get_blocked(cache_key: Optional[str] = None) -> JsonModel:
 
     for key in redis.scan_iter("blocked:*"):
+        if key.endswith(b"hash"):
+            continue
         cache_key = key
         break
 
