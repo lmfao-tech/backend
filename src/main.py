@@ -16,12 +16,12 @@ from fastapi.responses import RedirectResponse
 
 from _types import Tweet
 from server import Server
-from helpers import reset_rules, shuffle_list, repeat_every
+from helpers import lru_cache_with_ttl, reset_rules, shuffle_list, repeat_every
 
 load_dotenv()
 
 from redis_om import Migrator
-from redis_helpers import redis, Blocked, Meme, MemeCache, Templates, get_blocked, get_cache, get_templates  # type: ignore
+from redis_helpers import redis, Blocked, Meme, get_blocked
 
 install()
 app = FastAPI()
@@ -34,12 +34,9 @@ stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 if not is_rule_ok or not dev:
     reset_rules(stream)
 
-
 api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
-# Migrator().run()
-cache: MemeCache = get_cache()  # type: ignore
-blocked: Blocked = get_blocked()  # type: ignore
+blocked: Blocked = get_blocked()  # type:ignore
 
 mods: Dict[str, int] = {}
 
@@ -89,6 +86,7 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
             return
 
     meme = Meme(
+        page="main",
         username=tweet["includes"]["users"][0]["username"],
         user=tweet["includes"]["users"][0]["name"],
         profile_image_url=tweet["includes"]["users"][0]["profile_image_url"],
@@ -105,18 +103,19 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
 
 def handle_tweet(tweet: Tweet):
-    if len(cache.memes) >= 300:
-        cache.memes.pop(0)
 
     stored_object = filter_tweet(tweet)
 
     if stored_object is None:
         return
 
-    cache.memes.append(stored_object)
+    stored_object.expire(num_seconds=60 * 60 * 2)
+    stored_object.save()
 
 
 stream.on_tweet = handle_tweet
+stream.on_request_error = lambda resp: print(f"[red]{resp}[/red]")
+stream.on_closed = lambda resp: print("[red]Stream closed[/red]" + resp)
 
 if not dev:
     print(stream.get_rules())
@@ -126,70 +125,18 @@ if not dev:
 
 @app.on_event("startup")
 @repeat_every(seconds=60 * 30)
-def update_top_memes():
+def do_tasks():
     """
-    Update the top memes every 30 minutes
+    Update the moderators list every 30 minutes
     """
-
-    results = api.search_tweets(
-        "(from:weirdrealitymp4 OR from:IntrovertProbss OR from:OldMemeArchive OR from:ManMilk2 OR from:dankmemesreddit OR from:SpongeBobMemesZ OR from:WholesomeMeme OR from:memes OR from:memeadikt) has:images -is:retweet lang:en -is:reply",
-        tweet_fields=["created_at"],
-        user_fields=[
-            "username",
-            "name",
-            "profile_image_url",
-            "created_at",
-        ],  # To get the username
-        expansions=["attachments.media_keys", "author_id"],
-        media_fields=["preview_image_url", "url"],  # To get the image
-        return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key
-        max_results=100,
-    )
-    assert isinstance(results, dict)
-    for tweet in results["data"]:
-        user_id = tweet["author_id"]
-        media_id = tweet["attachments"]["media_keys"][0]
-
-        user = next(
-            (user for user in results["includes"]["users"] if user["id"] == user_id),
-            None,
-        )
-
-        attachment = next(
-            (
-                attachment
-                for attachment in results["includes"]["media"]
-                if attachment["media_key"] == media_id
-            ),
-            None,
-        )
-
-        if not user or not attachment:
-            continue
-
-        new_object = Meme(
-            username=user["username"],
-            user=user["name"],
-            profile_image_url=user["profile_image_url"],
-            user_id=user["id"],
-            tweet_id=tweet["id"],
-            tweet_text=tweet["text"],
-            tweet_link=f"https://twitter.com/{user['username']}/status/{tweet['id']}",
-            tweet_created_at=datetime.strptime(
-                tweet["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
-            ),
-            meme_link=attachment["url"],
-            source="Top Creators",
-        )
-
-        cache.top_memes.insert(0, new_object)
-
-        cache.top_memes = cache.top_memes[:300]
-
-    cache.save()
     blocked.save()
 
-    for meme in cache.removed_memes:
+    removed_memes: List[Meme] = Meme.find(
+        Meme.removed_by != None,
+    ).all()  # type: ignore
+
+    print(removed_memes)
+    for meme in removed_memes:
         if not meme.removed_by:
             continue
         if meme.removed_by in mods.keys():
@@ -202,11 +149,23 @@ def update_top_memes():
 @repeat_every(seconds=60 * 2)
 def save_cache():
     """Saves the current cache to the server every 2 minutes"""
-    t: MemeCache = get_cache()  # type: ignore
-    cache.community_memes = t.community_memes
-    print("[blue]Saving Cache[/blue]")
-    cache.save()
-    print(f"{len(cache.memes)} memes, {len(cache.top_memes)} top memes saved.")
+    TOTAL = 200
+    # Make sure memes "main" are not more than 200
+    memes: List[Meme] = Meme.find(Meme.page == "main").all()  # type: ignore
+    latest: List[Meme] = []
+    if len(memes) > TOTAL:
+        to_be_removed = len(memes) - TOTAL
+
+        for i in range(len(memes)):
+            if i < to_be_removed:
+                memes[i].delete(pk=memes[i].pk)
+            else:
+                if memes[i].removed_by == None:
+                    latest.append(memes[i])
+
+    for i, meme in enumerate(latest):
+        meme.update(index=i)
+
     blocked.save()
 
 
@@ -241,24 +200,39 @@ if not dev:
 # * GET ENDPOINTS
 
 
+# @lru_cache_with_ttl(ttl=90)
+def get_all_memes(page, last=0, max_tweets=20):
+
+    memes = Meme.find(
+        (Meme.page == page) & (Meme.index >= last) & (Meme.index <= last + max_tweets)
+    ).all()
+
+    return memes
+
+
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
+    all_memes = get_all_memes("main", last, max_tweets)
 
-    return {"memes": cache.memes[last : last + max_tweets]}
+    return {
+        "memes": all_memes[last : last + max_tweets],
+        "meta": {"total": len(all_memes)},
+    }
 
 
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
+    """Get the current memes stored in cache"""
+    community_memes_ = get_all_memes("community", last, max_tweets)
 
-    return {"memes": cache.community_memes[last : last + max_tweets]}
+    return {"memes": community_memes_[last : last + max_tweets]}
 
 
 @app.get("/profile_memes")
 async def profile(username: str, last: int = 0, max_tweets: int = 20):
     """Get the profile of a user"""
-    # TODO: Use redis search to find all memes by the user
-    memes = [meme for meme in cache.community_memes if meme.username == username]
+    memes = Meme.find(Meme.username == username).all()
 
     return {"memes": memes[last : last + max_tweets], "meta": {"total": len(memes)}}
 
@@ -267,10 +241,7 @@ async def profile(username: str, last: int = 0, max_tweets: int = 20):
 async def get_meme(tweet_id: int):
     """Get a specific meme"""
 
-    # TODO: use redis search to find the meme
-    meme = next(
-        (meme for meme in cache.community_memes if meme.tweet_id == str(tweet_id)), None
-    )
+    meme = Meme.find(Meme.tweet_id == str(tweet_id)).first()
 
     if meme is None:
         return {"message": "Meme not found"}
@@ -278,64 +249,35 @@ async def get_meme(tweet_id: int):
     return meme
 
 
-@app.get("/templates")
-async def get_templates_route():
-    templates: Templates = get_templates()  # type: ignore
-    return {"templates": templates.templates}
-
-
 # * MODERATION ENDPOINTS
 # TODO: Redis cache for the moderation endpoints
 @app.get("/revive_meme")
 async def revive_post(id: str):
 
-    for i, d in enumerate(cache.removed_memes):
-        if d.tweet_id == id:
-            d.removed_by = None
-            cache.removed_memes.pop(i)
-            cache.memes.insert(0, d)
+    meme: Meme = Meme.find(Meme.tweet_id == id).first()  # type:ignore
+    meme.update(removed_by=None)
 
     return {"message": "done"}
 
 
 @app.get("/removed_memes")
 async def removed_memes(last: int = 0, max_tweets: int = 20):
-
+    """Get the current memes stored in cache"""
+    removed_memes_ = Meme.find(Meme.removed_by != None).all()
+    print(removed_memes_)
     if last == 0:
-        return {"memes": cache.removed_memes[:max_tweets]}
+        return {"memes": removed_memes_[:max_tweets]}
     else:
-        return {"memes": cache.removed_memes[last : last + max_tweets]}
+        return {"memes": removed_memes_[last : last + max_tweets]}
 
 
 @app.get("/remove_meme")
 async def remove_a_post(id: str, by: str):
 
-    da_meme = None
-
-    for i, d in enumerate(cache.memes):
-        if d.tweet_id == id:
-            da_meme = d
-            cache.memes.pop(i)
-    for i, d in enumerate(cache.top_memes):
-        if d.tweet_id == id:
-            da_meme = d
-            cache.top_memes.pop(i)
-    for i, d in enumerate(cache.community_memes):
-        if d.tweet_id == id:
-            da_meme = d
-            cache.community_memes.pop(i)
-
-    already_exists = False
-    for e in cache.removed_memes:
-        if e.tweet_id == id:
-            already_exists = True
-
-    if not already_exists and da_meme:
-        da_meme.removed_by = by
-        da_meme.expire(num_seconds=60 * 60 * 12)
-        cache.removed_memes.insert(0, da_meme)
-
-    cache.save()
+    for meme in Meme.find(Meme.tweet_id == id).all():
+        if meme.removed_by is None:  # type: ignore
+            meme.update(removed_by=by)
+            meme.expire(num_seconds=60 * 60 * 2)
     return {"message": "done"}
 
 
@@ -345,11 +287,7 @@ async def ban_user(user: str):
     blocked.users.append(user)
     blocked.save()
 
-    for meme in cache.memes:
-        if meme.username == user:
-            cache.memes.remove(meme)
-
-    cache.save()
+    Meme.find(Meme.username == user).delete()
 
     return {"message": "done"}
 
@@ -385,7 +323,7 @@ async def supermod(
         if users and not users == "undefined":
             blocked.users.append(users)
         blocked.save()
-        
+
     elif action == "remove":
         if word and not word == "undefined":
             blocked.keywords.remove(word)
@@ -394,17 +332,21 @@ async def supermod(
         if users and not users == "undefined":
             blocked.users.remove(users)
         blocked.save()
-            
+
+    total = {
+        "cached": str(
+            len(Meme.find((Meme.page == "main") & (Meme.removed_by == None)).all())
+        ),
+        # "removed": str(len(Meme.find(Meme.removed_by != None).all())),
+        "community": str(len(Meme.find(Meme.page == "community").all())),
+    }
+    print(total)
 
     return {
         "blocked": blocked.users,
         "urls": blocked.urls,
         "keywords": blocked.keywords,
-        "total": {
-            "cached": len(cache.memes),
-            "removed": len(cache.removed_memes),
-            "community": len(cache.community_memes),
-        },
+        "total": {},
         "mods": mods,
     }
 
@@ -414,8 +356,7 @@ async def supermod(
 async def upload_meme(data: Meme):
     """Upload a meme to the server"""
     print(f"[blue]Uploading meme: {data.tweet_text}[/blue]")
-    cache.community_memes.insert(0, data)
-    cache.save()
+    data.save()
     return {"message": "done"}
 
 
