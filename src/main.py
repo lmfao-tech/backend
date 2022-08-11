@@ -149,9 +149,11 @@ def do_tasks():
 @repeat_every(seconds=60 * 2)
 def save_cache():
     """Saves the current cache to the server every 2 minutes"""
+    print("Saving cache and updating indexes")
     TOTAL = 200
     # Make sure memes "main" are not more than 200
     memes: List[Meme] = Meme.find(Meme.page == "main").all()  # type: ignore
+    print(len(memes))
     latest: List[Meme] = []
     if len(memes) > TOTAL:
         to_be_removed = len(memes) - TOTAL
@@ -159,12 +161,14 @@ def save_cache():
         for i in range(len(memes)):
             if i < to_be_removed:
                 memes[i].delete(pk=memes[i].pk)
-            else:
-                if memes[i].removed_by == None:
-                    latest.append(memes[i])
+    # TODO
+    #         else:
+    #             print(i)
+    #             if memes[i].removed_by == None:
+    #                 latest.append(memes[i])
 
-    for i, meme in enumerate(latest):
-        meme.update(index=i)
+    # for i, meme in enumerate(latest):
+    #     meme.update(index=i)
 
     blocked.save()
 
@@ -200,11 +204,14 @@ if not dev:
 # * GET ENDPOINTS
 
 
-# @lru_cache_with_ttl(ttl=90)
-def get_all_memes(page, last=0, max_tweets=20):
+@lru_cache_with_ttl(ttl=90)
+def get_all_memes(page):
+    # , last=0, max_tweets=20
 
     memes = Meme.find(
-        (Meme.page == page) & (Meme.index >= last) & (Meme.index <= last + max_tweets)
+        (
+            Meme.page == page
+        )  # & (Meme.index >= last) & (Meme.index <= last + max_tweets)
     ).all()
 
     return memes
@@ -213,18 +220,18 @@ def get_all_memes(page, last=0, max_tweets=20):
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    all_memes = get_all_memes("main", last, max_tweets)
+    all_memes = get_all_memes("main")  # last, max_tweets
 
     return {
         "memes": all_memes[last : last + max_tweets],
-        "meta": {"total": len(all_memes)},
+        "meta": {"total": len(all_memes), "sent": max_tweets, "last": last + max_tweets},
     }
 
 
 @app.get("/community_memes")
 async def community_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    community_memes_ = get_all_memes("community", last, max_tweets)
+    community_memes_ = get_all_memes("community")  # , last, max_tweets
 
     return {"memes": community_memes_[last : last + max_tweets]}
 
