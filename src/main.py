@@ -109,8 +109,8 @@ def handle_tweet(tweet: Tweet):
     if stored_object is None:
         return
 
-    stored_object.expire(num_seconds=60 * 60 * 2)
     stored_object.save()
+    stored_object.expire(60 * 60 * 2)
 
 
 stream.on_tweet = handle_tweet
@@ -375,7 +375,6 @@ async def supermod(
 async def upload_meme(data: Meme):
     """Upload a meme to the server"""
     print(f"[blue]Uploading meme: {data.tweet_text}[/blue]")
-    data.expire(60 * 60 * 2)
     data.save()
     return {"message": "done"}
 
