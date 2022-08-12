@@ -123,21 +123,46 @@ if not dev:
 # * AUTH AND TASKS
 
 
+@lru_cache_with_ttl(ttl=120)
+def get_removed_memes():
+    removed_memes: List[Meme] = Meme.find().all()  # type: ignore
+    removed_memes = [meme for meme in removed_memes if meme.removed_by != ""]
+    return removed_memes
+
+
+@lru_cache_with_ttl(ttl=90)
+def get_all_memes(page) -> List[Meme]:
+    # , last=0, max_tweets=20
+
+    memes: List[Meme] = Meme.find((Meme.page == page)).all()  # type: ignore
+    return memes
+
+
+@lru_cache_with_ttl(ttl=90)
+def get_profile(username: str):
+    memes = Meme.find(Meme.username == username).all()
+    return memes
+
+
+@lru_cache_with_ttl(ttl=60)
+def get_tweet(tweet_id):
+    meme = Meme.find(Meme.tweet_id == str(tweet_id)).first()
+    return meme
+
+
 @app.on_event("startup")
 @repeat_every(seconds=60 * 30)
 def do_tasks():
     """
     Update the moderators list every 30 minutes
     """
+    print("Doing 30m tasks")
     blocked.save()
 
-    removed_memes: List[Meme] = Meme.find(
-        Meme.removed_by != None,
-    ).all()  # type: ignore
+    removed_memes = get_removed_memes()
 
-    print(removed_memes)
     for meme in removed_memes:
-        if not meme.removed_by:
+        if meme.removed_by == "" or not meme.removed_by:
             continue
         if meme.removed_by in mods.keys():
             mods[meme.removed_by] += 1
@@ -203,14 +228,6 @@ if not dev:
 # * GET ENDPOINTS
 
 
-@lru_cache_with_ttl(ttl=90)
-def get_all_memes(page) -> List[Meme]:
-    # , last=0, max_tweets=20
-
-    memes:List[Meme] = Meme.find((Meme.page == page)).all() # type: ignore
-    return memes
-
-
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
@@ -239,17 +256,14 @@ async def community_memes(last: int = 0, max_tweets: int = 20):
 @app.get("/profile_memes")
 async def profile(username: str, last: int = 0, max_tweets: int = 20):
     """Get the profile of a user"""
-    memes = Meme.find(Meme.username == username).all()
-
+    memes = get_profile(username)
     return {"memes": memes[last : last + max_tweets], "meta": {"total": len(memes)}}
 
 
 @app.get("/get_meme")
 async def get_meme(tweet_id: int):
     """Get a specific meme"""
-
-    meme = Meme.find(Meme.tweet_id == str(tweet_id)).first()
-
+    meme = get_tweet(tweet_id)
     if meme is None:
         return {"message": "Meme not found"}
 
@@ -260,7 +274,7 @@ async def get_meme(tweet_id: int):
 @app.get("/revive_meme")
 async def revive_post(id: str):
 
-    meme: Meme = Meme.find(Meme.tweet_id == id).first()  # type:ignore
+    meme: Meme = get_tweet(id)  # type: ignore
     meme.update(removed_by=None)
 
     return {"message": "done"}
@@ -269,16 +283,7 @@ async def revive_post(id: str):
 @app.get("/removed_memes")
 async def removed_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    n: List[Meme] = get_all_memes("main")  # type: ignore
-    b: List[Meme] = get_all_memes("community")  # type: ignore
-
-    all_memes = n + b
-
-    removed_memes_ = [
-        meme
-        for meme in all_memes
-        if meme.removed_by is not None and meme.removed_by != ""
-    ]
+    removed_memes_ = get_removed_memes()
 
     if last == 0:
         return {"memes": removed_memes_[:max_tweets]}
@@ -289,13 +294,11 @@ async def removed_memes(last: int = 0, max_tweets: int = 20):
 @app.get("/remove_meme")
 async def remove_a_post(id: str, by: str):
     print(id)
-    memes : List[Meme] = Meme.find(Meme.tweet_id == id).all()  # type: ignore
+    memes: List[Meme] = Meme.find(Meme.tweet_id == id).all()  # type: ignore
     for meme in memes:
-        if meme.tweet_id == id:
-            meme.removed_by = by
-            meme.expire(60 * 60 * 2)
-            meme.save()
-            return {"message": "done"}
+        meme.removed_by = by
+        meme.expire(60 * 60 * 2)
+        meme.save()
     return {"message": "done"}
 
 
@@ -351,20 +354,17 @@ async def supermod(
             blocked.users.remove(users)
         blocked.save()
 
-    # total = {
-    #     "cached": str(
-    #         len(Meme.find((Meme.page == "main") & (Meme.removed_by == None)).all())
-    #     ),
-    #     # "removed": str(len(Meme.find(Meme.removed_by != None).all())),
-    #     "community": str(len(Meme.find(Meme.page == "community").all())),
-    # }
-    # print(total)
+    total = {
+        "cached": str(len(get_all_memes("main"))),
+        "removed": str(len(get_removed_memes())),
+        "community": str(len(get_all_memes("community"))),
+    }
 
     return {
         "blocked": blocked.users,
         "urls": blocked.urls,
         "keywords": blocked.keywords,
-        "total": {},
+        "total": total,
         "mods": mods,
     }
 
@@ -374,6 +374,7 @@ async def supermod(
 async def upload_meme(data: Meme):
     """Upload a meme to the server"""
     print(f"[blue]Uploading meme: {data.tweet_text}[/blue]")
+    data.expire(60 * 60 * 2)
     data.save()
     return {"message": "done"}
 
