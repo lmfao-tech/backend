@@ -127,13 +127,12 @@ if not dev:
 def get_removed_memes():
     removed_memes: List[Meme] = Meme.find().all()  # type: ignore
     removed_memes = [meme for meme in removed_memes if meme.removed_by != ""]
+    removed_memes.reverse()
     return removed_memes
 
 
 @lru_cache_with_ttl(ttl=90)
 def get_all_memes(page) -> List[Meme]:
-    # , last=0, max_tweets=20
-
     memes: List[Meme] = Meme.find((Meme.page == page)).all()  # type: ignore
     return memes
 
@@ -141,6 +140,7 @@ def get_all_memes(page) -> List[Meme]:
 @lru_cache_with_ttl(ttl=90)
 def get_profile(username: str):
     memes = Meme.find(Meme.username == username).all()
+    memes.reverse()
     return memes
 
 
@@ -249,6 +249,7 @@ async def get_memes(last: int = 0, max_tweets: int = 20):
 async def community_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
     community_memes_ = get_all_memes("community")  # , last, max_tweets
+    community_memes_.reverse()
 
     return {"memes": community_memes_[last : last + max_tweets]}
 
