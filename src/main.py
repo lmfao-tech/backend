@@ -161,7 +161,6 @@ def save_cache():
         for i in range(len(memes)):
             if i < to_be_removed:
                 memes[i].delete(pk=memes[i].pk)
-    # TODO
     #         else:
     #             print(i)
     #             if memes[i].removed_by == None:
@@ -205,26 +204,27 @@ if not dev:
 
 
 @lru_cache_with_ttl(ttl=90)
-def get_all_memes(page):
+def get_all_memes(page) -> List[Meme]:
     # , last=0, max_tweets=20
 
-    memes = Meme.find(
-        (
-            Meme.page == page
-        )  # & (Meme.index >= last) & (Meme.index <= last + max_tweets)
-    ).all()
-
+    memes:List[Meme] = Meme.find((Meme.page == page)).all() # type: ignore
     return memes
 
 
 @app.get("/get_memes")
 async def get_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    all_memes = get_all_memes("main")  # last, max_tweets
+    all_memes: List[Meme] = get_all_memes("main")  # last, max_tweets
+
+    all_memes = [meme for meme in all_memes if meme.removed_by is not None]
 
     return {
         "memes": all_memes[last : last + max_tweets],
-        "meta": {"total": len(all_memes), "sent": max_tweets, "last": last + max_tweets},
+        "meta": {
+            "total": len(all_memes),
+            "sent": max_tweets,
+            "last": last + max_tweets,
+        },
     }
 
 
@@ -257,7 +257,6 @@ async def get_meme(tweet_id: int):
 
 
 # * MODERATION ENDPOINTS
-# TODO: Redis cache for the moderation endpoints
 @app.get("/revive_meme")
 async def revive_post(id: str):
 
@@ -270,12 +269,16 @@ async def revive_post(id: str):
 @app.get("/removed_memes")
 async def removed_memes(last: int = 0, max_tweets: int = 20):
     """Get the current memes stored in cache"""
-    n : List[Meme] = get_all_memes("main") # type: ignore
-    b : List[Meme]= get_all_memes("community") # type: ignore
+    n: List[Meme] = get_all_memes("main")  # type: ignore
+    b: List[Meme] = get_all_memes("community")  # type: ignore
 
     all_memes = n + b
 
-    removed_memes_ = [meme for meme in all_memes if meme.removed_by is not None and meme.removed_by != ""]
+    removed_memes_ = [
+        meme
+        for meme in all_memes
+        if meme.removed_by is not None and meme.removed_by != ""
+    ]
 
     if last == 0:
         return {"memes": removed_memes_[:max_tweets]}
@@ -285,11 +288,14 @@ async def removed_memes(last: int = 0, max_tweets: int = 20):
 
 @app.get("/remove_meme")
 async def remove_a_post(id: str, by: str):
-
-    for meme in Meme.find(Meme.tweet_id == id).all():
-        if meme.removed_by is None:  # type: ignore
-            meme.update(removed_by=by)
-            meme.expire(num_seconds=60 * 60 * 2)
+    print(id)
+    memes : List[Meme] = Meme.find(Meme.tweet_id == id).all()  # type: ignore
+    for meme in memes:
+        if meme.tweet_id == id:
+            meme.removed_by = by
+            meme.expire(60 * 60 * 2)
+            meme.save()
+            return {"message": "done"}
     return {"message": "done"}
 
 
