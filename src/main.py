@@ -126,9 +126,12 @@ if not dev:
 @lru_cache_with_ttl(ttl=120)
 def get_removed_memes():
     removed_memes: List[Meme] = Meme.find().all()  # type: ignore
-    removed_memes = [meme for meme in removed_memes if meme.removed_by != ""]
-    removed_memes.reverse()
-    return removed_memes
+    r = []
+    for meme in removed_memes:
+        if not meme.removed_by == "":
+            r.append(meme)
+    r.reverse()
+    return r
 
 
 @lru_cache_with_ttl(ttl=90)
@@ -178,7 +181,6 @@ def save_cache():
     TOTAL = 200
     # Make sure memes "main" are not more than 200
     memes: List[Meme] = Meme.find(Meme.page == "main").all()  # type: ignore
-    print(len(memes))
     latest: List[Meme] = []
     if len(memes) > TOTAL:
         to_be_removed = len(memes) - TOTAL
@@ -186,13 +188,6 @@ def save_cache():
         for i in range(len(memes)):
             if i < to_be_removed:
                 memes[i].delete(pk=memes[i].pk)
-    #         else:
-    #             print(i)
-    #             if memes[i].removed_by == None:
-    #                 latest.append(memes[i])
-
-    # for i, meme in enumerate(latest):
-    #     meme.update(index=i)
 
     blocked.save()
 
@@ -294,12 +289,10 @@ async def removed_memes(last: int = 0, max_tweets: int = 20):
 
 @app.get("/remove_meme")
 async def remove_a_post(id: str, by: str):
-    print(id)
     memes: List[Meme] = Meme.find(Meme.tweet_id == id).all()  # type: ignore
-    for meme in memes:
-        meme.removed_by = by
-        meme.expire(60 * 60 * 2)
-        meme.save()
+    memes[0].update(removed_by=by)
+    memes[0].expire(num_seconds=24 * 60 * 60)
+    memes[0].save()
     return {"message": "done"}
 
 
