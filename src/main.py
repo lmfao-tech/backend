@@ -43,63 +43,69 @@ mods: Dict[str, int] = {}
 
 def filter_tweet(tweet: Tweet) -> Optional[Meme]:
 
-    if not "includes" in tweet:
-        return
-    created_at = datetime.strptime(
-        tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
-    )
+    try:
+        if not "includes" in tweet:
+            return
+        created_at = datetime.strptime(
+            tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
+        )
 
-    if created_at > datetime.now() - timedelta(days=10):
-        if dev:
-            print("[red]User acc created less than 10 days ago, skipping[/red]")
-        return
-    if not "media" in tweet["includes"]:
-        if dev:
-            print("[red]No media, skipping[/red]")
-        return
-    if not tweet["includes"]["media"][0]["type"] == "photo":
-        if dev:
-            print("[red]Not a photo, skipping[/red]")
-        return
-    if tweet["data"]["text"].startswith("RT "):
-        if dev:
-            print("[red]Is a retweet, skipping[/red]")
-        return
-
-    if any(keyword in tweet["data"]["text"].lower() for keyword in blocked.keywords):
-        if dev:
-            print("[red]Is an ad, skipping[/red]")
-        return
-
-    if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users):  # type: ignore
-        if dev:
-            print("[red]Is a blocked user, skipping[/red]")
-        return
-
-    if "urls" in tweet["data"]["entities"]:
-        if any(
-            url in tweet["data"]["entities"]["urls"][0]["expanded_url"]
-            for url in blocked.urls  # type: ignore
-        ):
+        if created_at > datetime.now() - timedelta(days=10):
             if dev:
-                print("[red]Is a blocked url, skipping[/red]")
+                print("[red]User acc created less than 10 days ago, skipping[/red]")
+            return
+        if not "media" in tweet["includes"]:
+            if dev:
+                print("[red]No media, skipping[/red]")
+            return
+        if not tweet["includes"]["media"][0]["type"] == "photo":
+            if dev:
+                print("[red]Not a photo, skipping[/red]")
+            return
+        if tweet["data"]["text"].startswith("RT "):
+            if dev:
+                print("[red]Is a retweet, skipping[/red]")
             return
 
-    meme = Meme(
-        page="main",
-        username=tweet["includes"]["users"][0]["username"],
-        user=tweet["includes"]["users"][0]["name"],
-        profile_image_url=tweet["includes"]["users"][0]["profile_image_url"],
-        user_id=tweet["includes"]["users"][0]["id"],
-        tweet_id=tweet["data"]["id"],
-        tweet_text=tweet["data"]["text"],
-        tweet_link=f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
-        tweet_created_at=created_at,
-        meme_link=tweet["includes"]["media"][0]["url"],
-        source="Recently uploaded",
-    )
+        if any(
+            keyword in tweet["data"]["text"].lower() for keyword in blocked.keywords
+        ):
+            if dev:
+                print("[red]Is an ad, skipping[/red]")
+            return
 
-    return meme
+        if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users):  # type: ignore
+            if dev:
+                print("[red]Is a blocked user, skipping[/red]")
+            return
+
+        if "urls" in tweet["data"]["entities"]:
+            if any(
+                url in tweet["data"]["entities"]["urls"][0]["expanded_url"]
+                for url in blocked.urls  # type: ignore
+            ):
+                if dev:
+                    print("[red]Is a blocked url, skipping[/red]")
+                return
+
+        meme = Meme(
+            page="main",
+            username=tweet["includes"]["users"][0]["username"],
+            user=tweet["includes"]["users"][0]["name"],
+            profile_image_url=tweet["includes"]["users"][0]["profile_image_url"],
+            user_id=tweet["includes"]["users"][0]["id"],
+            tweet_id=tweet["data"]["id"],
+            tweet_text=tweet["data"]["text"],
+            tweet_link=f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
+            tweet_created_at=created_at,
+            meme_link=tweet["includes"]["media"][0]["url"],
+            source="Recently uploaded",
+        )
+
+        return meme
+    except Exception as e:
+        print(e)
+        return None
 
 
 def handle_tweet(tweet: Tweet):
