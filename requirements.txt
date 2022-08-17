@@ -6,3 +6,4 @@ emoji
 fastapi
 uvicorn
 redis-om
+honeybadger
