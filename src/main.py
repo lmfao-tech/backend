@@ -69,20 +69,20 @@ def filter_tweet(tweet: Tweet) -> Optional[Meme]:
         return
 
     if any(
-        keyword in tweet["data"]["text"].lower() for keyword in blocked.keywords
+        keyword.lower() in tweet["data"]["text"].lower() for keyword in blocked.keywords
     ):
         if dev:
             print("[red]Is an ad, skipping[/red]")
         return
 
-    if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users):  # type: ignore
+    if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users).lower():  # type: ignore
         if dev:
             print("[red]Is a blocked user, skipping[/red]")
         return
 
     if "urls" in tweet["data"]["entities"]:
         if any(
-            url in tweet["data"]["entities"]["urls"][0]["expanded_url"]
+            url.lower() in tweet["data"]["entities"]["urls"][0]["expanded_url"].lower()
             for url in blocked.urls  # type: ignore
         ):
             if dev:
