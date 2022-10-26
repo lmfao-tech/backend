@@ -56,7 +56,7 @@ class Blocked(JsonModel):
 def get_blocked(cache_key: Optional[str] = None) -> JsonModel:
 
     for key in redis.scan_iter("blocked:*"):
-        if key.endswith(b"hash"):
+        if key.endswith("hash"):
             continue
         cache_key = key
         break
