@@ -1,12 +1,9 @@
-from optparse import Option
-import random
 from typing import Dict, List, Literal, Optional, TypedDict
 from os import environ as env
 
 import uvicorn
 from rich import print
 from pytwitter import Api
-from functools import lru_cache
 from dotenv import load_dotenv
 from pytwitter import StreamApi
 from rich.traceback import install
@@ -16,7 +13,7 @@ from fastapi.responses import RedirectResponse
 
 from _types import Tweet
 from server import Server
-from helpers import lru_cache_with_ttl, reset_rules, shuffle_list, repeat_every
+from helpers import lru_cache_with_ttl, reset_rules, repeat_every
 
 load_dotenv()
 
@@ -118,7 +115,7 @@ def handle_tweet(tweet: Tweet):
 
 
 stream.on_tweet = handle_tweet
-stream.on_request_error = lambda resp: print(f"[red]{resp}[/red]")
+stream.on_request_error = lambda resp: honeybadger.notify(resp)
 stream.on_closed = lambda resp: print("[red]Stream closed[/red]" + resp)
 
 if not dev:
@@ -185,7 +182,7 @@ def save_cache():
     TOTAL = 200
     # Make sure memes "main" are not more than 200
     memes: List[Meme] = Meme.find(Meme.page == "main").all()  # type: ignore
-    latest: List[Meme] = []
+
     if len(memes) > TOTAL:
         to_be_removed = len(memes) - TOTAL
 
@@ -195,17 +192,10 @@ def save_cache():
 
     blocked.save()
 
-
-@app.get("/hello")
-def hello():
-    return {"message": "Hello World!"}
-
-
 @app.get("/unauthorized", status_code=401)
 def unauthorized():
     # return 401 status
     return {"message": "Unauthorized"}
-
 
 # Middleware for authorization
 if not dev:
