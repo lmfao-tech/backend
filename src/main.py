@@ -208,20 +208,20 @@ def unauthorized():
 
 
 # Middleware for authorization
-# if not dev:
+if not dev:
 
-#     @app.middleware("http")
-#     async def authenticate(request: Request, call_next):
+    @app.middleware("http")
+    async def authenticate(request: Request, call_next):
 
-#         if request.url.path == "/unauthorized":
-#             # Don't do anything for this route
-#             return await call_next(request)
+        if request.url.path == "/unauthorized":
+            # Don't do anything for this route
+            return await call_next(request)
 
-#         if request.headers.get("Authorization") == env.get("AUTH_PASSWORD"):
-#             return await call_next(request)
-#         else:
-#             # Redirect to unauthorized page
-#             return RedirectResponse("/unauthorized")
+        if request.headers.get("Authorization") == env.get("AUTH_PASSWORD"):
+            return await call_next(request)
+        else:
+            # Redirect to unauthorized page
+            return RedirectResponse("/unauthorized")
 
 
 # * GET ENDPOINTS
