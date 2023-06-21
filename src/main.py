@@ -5,7 +5,6 @@ import uvicorn
 from rich import print
 from pytwitter import Api
 from dotenv import load_dotenv
-from pytwitter import StreamApi
 from rich.traceback import install
 from fastapi import FastAPI, Request
 from datetime import datetime, timedelta
@@ -28,100 +27,10 @@ dev = (
     env.get("ENV") == "development"
 )  #! Development environment turns off authorization for quick testing
 is_rule_ok = True  # If set to false, it will delete all the rules and use the RULES from src\data.py
-stream = StreamApi(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
-
-if not is_rule_ok or not dev:
-    reset_rules(stream)
-
-api = Api(bearer_token=env.get("TWITTER_BEARER_TOKEN"))
 
 blocked: Blocked = get_blocked()  # type:ignore
 
 mods: Dict[str, int] = {}
-
-
-def filter_tweet(tweet: Tweet) -> Optional[Meme]:
-
-    if not "includes" in tweet:
-        return
-    created_at = datetime.strptime(
-        tweet["includes"]["users"][0]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z"
-    )
-
-    if created_at > datetime.now() - timedelta(days=10):
-        if dev:
-            print("[red]User acc created less than 10 days ago, skipping[/red]")
-        return
-    if not "media" in tweet["includes"]:
-        if dev:
-            print("[red]No media, skipping[/red]")
-        return
-    if not tweet["includes"]["media"][0]["type"] == "photo":
-        if dev:
-            print("[red]Not a photo, skipping[/red]")
-        return
-    if tweet["data"]["text"].startswith("RT "):
-        if dev:
-            print("[red]Is a retweet, skipping[/red]")
-        return
-
-    if any(
-        keyword.lower() in tweet["data"]["text"].lower() for keyword in blocked.keywords
-    ):
-        if dev:
-            print("[red]Is an ad, skipping[/red]")
-        return
-
-    if tweet["includes"]["users"][0]["username"].lower() in " ".join(blocked.users).lower():  # type: ignore
-        if dev:
-            print("[red]Is a blocked user, skipping[/red]")
-        return
-
-    if "urls" in tweet["data"]["entities"]:
-        if any(
-            url.lower() in tweet["data"]["entities"]["urls"][0]["expanded_url"].lower()
-            for url in blocked.urls  # type: ignore
-        ):
-            if dev:
-                print("[red]Is a blocked url, skipping[/red]")
-            return
-
-    meme = Meme(
-        page="main",
-        username=tweet["includes"]["users"][0]["username"],
-        user=tweet["includes"]["users"][0]["name"],
-        profile_image_url=tweet["includes"]["users"][0]["profile_image_url"],
-        user_id=tweet["includes"]["users"][0]["id"],
-        tweet_id=tweet["data"]["id"],
-        tweet_text=tweet["data"]["text"],
-        tweet_link=f"https://twitter.com/{tweet['includes']['users'][0]['username']}/status/{tweet['data']['id']}",
-        tweet_created_at=created_at,
-        meme_link=tweet["includes"]["media"][0]["url"],
-        source="Recently uploaded",
-    )
-
-    return meme
-
-
-def handle_tweet(tweet: Tweet):
-
-    stored_object = filter_tweet(tweet)
-
-    if stored_object is None:
-        return
-
-    stored_object.save()
-    stored_object.expire(60 * 60 * 2)
-
-
-stream.on_tweet = handle_tweet
-stream.on_request_error = lambda resp: honeybadger.notify(resp)
-stream.on_closed = lambda resp: print("[red]Stream closed[/red]" + resp)
-
-if not dev:
-    print(stream.get_rules())
-
-# * AUTH AND TASKS
 
 
 @lru_cache_with_ttl(ttl=120)
@@ -369,20 +278,7 @@ async def upload_meme(data: Meme):
 config = uvicorn.Config(app=app, host="0.0.0.0")
 if dev:
     print("[green]Running in development mode[/green]")
-    config = uvicorn.Config(app=app, reload=True, debug=True)
+    config = uvicorn.Config(app=app, reload=True)
 server = Server(config)
 
-
-with server.run_in_thread():
-    stream.search_stream(
-        tweet_fields=["created_at", "entities"],
-        user_fields=[
-            "username",
-            "name",
-            "profile_image_url",
-            "created_at",
-        ],  # To get the username
-        expansions=["attachments.media_keys", "author_id"],
-        media_fields=["preview_image_url", "url"],  # To get the image
-        return_json=True,  # Return JSON because pytwitter doesn't return the `includes` key
-    )
+server.run()
